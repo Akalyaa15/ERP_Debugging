@@ -1,0 +1,29 @@
+<?php
+namespace \App\Models;
+class Credentials_model extends Crud_model {
+
+    private $table = null;
+
+    public function __construct() {
+        $this->table = 'credentials';
+        parent::__construct($this->table);
+    }
+
+    public function get_details($options = array()) {
+        $table = $this->db->dbprefix('credentials');
+        $where = "";
+
+        $id = get_array_value($options, "id");
+        if ($id) {
+            $where = " AND $table.id=$id";
+        }
+
+        $sql = "SELECT $table.*
+        FROM $table
+        WHERE $table.deleted=0 $where";
+        return $this->db->query($sql);
+    }
+
+
+    
+}
