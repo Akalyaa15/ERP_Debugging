@@ -22,8 +22,7 @@ class ActivityLogsModel extends Model
         $this->insert($data);
         return $this->insertID();
     }
-
-    public function deleteWhere($where = [])
+   public function deleteWhere($where = [])
     {
         if (count($where)) {
             return $this->where($where)->delete();
