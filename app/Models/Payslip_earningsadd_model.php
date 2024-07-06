@@ -1,33 +1,38 @@
 <?php
 
-class Payslip_earningsadd_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'payslip_earningsadd';
-        parent::__construct($this->table);
+class PayslipEarningsAddModel extends Model
+{
+    protected $table = 'payslip_earningsadd';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $payslip_earningsadd_table = $this->db->dbprefix('payslip_earningsadd');
-        $payslip_table = $this->db->dbprefix('payslip');
-        
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->db->table($this->table);
+        $builder->select("$this->table.*");
+        $builder->join('payslip', "payslip.id = $this->table.payslip_id", 'left');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $payslip_earningsadd_table.id=$id";
+            $builder->where("$this->table.id", $id);
         }
-        $payslip_id = get_array_value($options, "payslip_id");
+
+        $payslip_id = $options['payslip_id'] ?? null;
         if ($payslip_id) {
-            $where .= " AND $payslip_earningsadd_table.payslip_id=$payslip_id";
+            $builder->where("$this->table.payslip_id", $payslip_id);
         }
 
-        $sql = "SELECT $payslip_earningsadd_table.*
-        FROM $payslip_earningsadd_table
-        LEFT JOIN $payslip_table ON $payslip_table.id=$payslip_earningsadd_table.payslip_id
-        WHERE $payslip_earningsadd_table.deleted=0 $where";
-        return $this->db->query($sql);  
-    }
+        $builder->where("$this->table.deleted", 0);
 
-  }
+        return $builder->get()->getResult();
+    }
+}

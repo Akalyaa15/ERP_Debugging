@@ -1,15 +1,12 @@
 <?php
-
 class Work_order_payments_model extends Crud_model {
-
     private $table = null;
-
     function __construct() {
         $this->table = 'work_order_payments';
         parent::__construct($this->table);
     }
 
-    function get_details($options = array()) {
+   function get_details($options = array()) {
         $work_order_payments_table = $this->db->dbprefix('work_order_payments');
         $work_orders_table = $this->db->dbprefix('work_orders');
         $payment_methods_table = $this->db->dbprefix('payment_methods');
@@ -21,9 +18,6 @@ class Work_order_payments_model extends Crud_model {
         if ($id) {
             $where .= " AND $work_order_payments_table.id=$id";
         }
-
-        
-
         $work_order_id = get_array_value($options, "work_order_id");
         if ($work_order_id) {
             $where .= " AND $work_order_payments_table.work_order_id=$work_order_id";
@@ -68,6 +62,4 @@ class Work_order_payments_model extends Crud_model {
             WHERE $payments_table.deleted=0 AND YEAR($payments_table.payment_date)= $year AND $work_orders_table.deleted=0
             GROUP BY MONTH($payments_table.payment_date)";
         return $this->db->query($payments)->result();
-    }
-
-}
+    }}

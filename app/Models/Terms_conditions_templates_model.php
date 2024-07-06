@@ -1,58 +1,62 @@
 <?php
 
-class Terms_conditions_templates_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'terms_conditions_templates';
-        parent::__construct($this->table);
-    }
+class Terms_conditions_templates_model extends Model
+{
+    protected $table = 'terms_conditions_templates';
+    protected $primaryKey = 'id'; // Adjust primary key if necessary
+    protected $useSoftDeletes = true; // Enable soft deletes
 
-    function get_details($options = array()) {
-        $terms_conditions_templates_table = $this->db->dbprefix('terms_conditions_templates');
+    protected $returnType = 'object'; // Adjust return type as needed
 
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $terms_conditions_templates_table.id=$id";
+    public function getDetails($options = [])
+    {
+        $builder = $this->select('*')
+                        ->where('deleted', 0);
+
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-        $sql = "SELECT $terms_conditions_templates_table.*
-        FROM $terms_conditions_templates_table
-        WHERE $terms_conditions_templates_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
-    function get_default() {
-        $terms_conditions_templates_table = $this->db->dbprefix('terms_conditions_templates');
 
-        $sql = "SELECT $terms_conditions_templates_table.*
-        FROM $terms_conditions_templates_table
-        WHERE $terms_conditions_templates_table.deleted=0 AND $terms_conditions_templates_table.is_default=1";
-        return $this->db->query($sql);
+    public function getDefault()
+    {
+        return $this->where('deleted', 0)
+                    ->where('is_default', 1)
+                    ->findAll();
     }
-    function set_zero() {
-        $terms_conditions_templates_table = $this->db->dbprefix('terms_conditions_templates');
 
-        $sql = "UPDATE $terms_conditions_templates_table SET is_default = 0";
-        return $this->db->query($sql);
+    public function setZero()
+    {
+        return $this->set('is_default', 0)
+                    ->update();
     }
-    function get_final_template($template_name = "") {
-        $terms_conditions_templates_table = $this->db->dbprefix('terms_conditions_templates');
 
-        $sql = "SELECT $terms_conditions_templates_table.default_message, $terms_conditions_templates_table.custom_message, $terms_conditions_templates_table.email_subject, 
-            signature_template.custom_message AS signature_custom_message, signature_template.default_message AS signature_default_message
-        FROM $terms_conditions_templates_table
-        LEFT JOIN $terms_conditions_templates_table AS signature_template ON signature_template.template_name='signature'
-        WHERE $terms_conditions_templates_table.deleted=0 AND $terms_conditions_templates_table.template_name='$template_name'";
-        $result = $this->db->query($sql)->row();
+    public function getFinalTemplate($templateName = "")
+    {
+        $builder = $this->select('default_message, custom_message, email_subject')
+                        ->where('deleted', 0)
+                        ->where('template_name', $templateName);
 
-        $info = new stdClass();
+        $signatureBuilder = clone $builder;
+        $signatureBuilder->where('template_name', 'signature')
+                         ->select('custom_message AS signature_custom_message, default_message AS signature_default_message');
+
+        $query = $builder->join('terms_conditions_templates AS signature_template', 'signature_template.template_name', 'signature')
+                        ->findAll();
+
+        $result = $query->getRow();
+
+        $info = new \stdClass();
         $info->subject = $result->email_subject;
-        $info->message = $result->custom_message ? $result->custom_message : $result->default_message;
-        $info->signature = $result->signature_custom_message ? $result->signature_custom_message : $result->signature_default_message;
+        $info->message = $result->custom_message ?: $result->default_message;
+        $info->signature = $result->signature_custom_message ?: $result->signature_default_message;
 
         return $info;
     }
-
 }

@@ -1,36 +1,37 @@
 <?php
 
-class Project_settings_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'project_settings';
-        parent::__construct($this->table);
+class ProjectSettingsModel extends Model
+{
+    protected $table = 'project_settings';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function getSetting($projectId, $settingName)
+    {
+        return $this->where('project_id', $projectId)
+                    ->where('setting_name', $settingName)
+                    ->where('deleted', 0)
+                    ->first();
     }
 
-    function get_setting($project_id, $setting_name) {
-        $result = $this->db->get_where($this->table, array('project_id' => $project_id, 'setting_name' => $setting_name), 1);
-        if ($result->num_rows() == 1) {
-            return $result->row()->setting_value;
-        }
-    }
+    public function saveSetting($projectId, $settingName, $settingValue)
+    {
+        $data = [
+            'project_id' => $projectId,
+            'setting_name' => $settingName,
+            'setting_value' => $settingValue
+        ];
 
-    function save_setting($project_id, $setting_name, $setting_value) {
-        $fields = array(
-            'project_id' => $project_id,
-            'setting_name' => $setting_name,
-            'setting_value' => $setting_value
-        );
+        $existingSetting = $this->getSetting($projectId, $settingName);
 
-        $exists = $this->get_setting($project_id, $setting_name);
-        if ($exists === NULL) {
-            return $this->db->insert($this->table, $fields);
+        if (!$existingSetting) {
+            return $this->insert($data);
         } else {
-            $this->db->where('setting_name', $setting_name);
-            $this->db->where('project_id', $project_id);
-            $this->db->update($this->table, $fields);
+            return $this->update(['id' => $existingSetting->id], $data);
         }
     }
-
 }

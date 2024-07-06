@@ -1543,10 +1543,7 @@ $attendance_task_no=0;
 
     }// ot handler greater than 0 value end if
 
-        
-
-
-        echo json_encode(array("data" => $result));
+    echo json_encode(array("data" => $result));
 
     }
 

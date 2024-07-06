@@ -1,26 +1,25 @@
 <?php
 
-class Ticket_types_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'ticket_types';
-        parent::__construct($this->table);
-    }
+class Ticket_types_model extends Model
+{
+    protected $table = 'ticket_types';
+    protected $primaryKey = 'id'; 
+    protected $useSoftDeletes = true; 
+    protected $returnType = 'object'; 
 
-    function get_details($options = array()) {
-        $ticket_types_table = $this->db->dbprefix('ticket_types');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $ticket_types_table.id=$id";
+    public function getDetails($options = [])
+    {
+        $builder = $this->select('*')
+                        ->where('deleted', 0);
+
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-        $sql = "SELECT $ticket_types_table.*
-        FROM $ticket_types_table
-        WHERE $ticket_types_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
-
 }

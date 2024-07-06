@@ -166,7 +166,7 @@ class Companys_model extends Crud_model {
     function get_client_country_info_suggestion($item_name = "") {
 
         $items_table = $this->db->dbprefix('companys');
-        //$states_table = $this->db->dbprefix('states');
+        //$states_table = $this->db->dbprefix('states');s
 
         $sql = "SELECT $items_table.*
         FROM $items_table

@@ -1,27 +1,30 @@
 <?php
 
-class Roles_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'roles';
-        parent::__construct($this->table);
-    }
+class RolesModel extends Model
+{
+    protected $table = 'roles';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
 
-    function get_details($options = array()) {
-        $roles_table = $this->db->dbprefix('roles');
-        
-        $where= "";
-        $id=get_array_value($options, "id");
-        if($id){
-            $where =" AND $roles_table.id=$id";
+    public function getDetails($options = [])
+    {
+        $rolesTable = $this->table;
+        $where = [];
+
+        $id = $options['id'] ?? null;
+        if ($id) {
+            $where["$rolesTable.id"] = $id;
         }
-        
-        $sql = "SELECT $roles_table.*
-        FROM $roles_table
-        WHERE $roles_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
 
+        $builder = $this->db->table($rolesTable);
+        $builder->select("*");
+        $builder->where($where);
+        $builder->where('deleted', 0);
+
+        return $builder->get()->getResult();
+    }
 }

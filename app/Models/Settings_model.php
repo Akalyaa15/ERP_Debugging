@@ -1,46 +1,60 @@
 <?php
 
-class Settings_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'settings';
-        parent::__construct($this->table);
-    }
+class SettingsModel extends Model
+{
+    protected $table = 'settings';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object'; 
 
-    function get_setting($setting_name) {
-        $result = $this->db->get_where($this->table, array('setting_name' => $setting_name), 1);
-        if ($result->num_rows() == 1) {
-            return $result->row()->setting_value;
+    public function getSetting($setting_name)
+    {
+        $query = $this->where('setting_name', $setting_name)
+                      ->where('deleted', 0)
+                      ->first();
+
+        if ($query) {
+            return $query->setting_value;
         }
     }
 
-    function save_setting($setting_name, $setting_value, $type = "app") {
-        $fields = array(
+    public function saveSetting($setting_name, $setting_value, $type = 'app')
+    {
+        $exists = $this->getSetting($setting_name);
+
+        $data = [
             'setting_name' => $setting_name,
-            'setting_value' => $setting_value
-        );
+            'setting_value' => $setting_value,
+            'type' => $type
+        ];
 
-        $exists = $this->get_setting($setting_name);
-        if ($exists === NULL) {
-            $fields["type"] = $type; //type can't be updated
-
-            return $this->db->insert($this->table, $fields);
+        if ($exists === null) {
+            return $this->insert($data);
         } else {
-            $this->db->where('setting_name', $setting_name);
-            $this->db->update($this->table, $fields);
+            $this->where('setting_name', $setting_name)
+                 ->update($data);
+            return true;
         }
     }
 
-    //find all app settings and login user's setting
-    //user's settings are saved like this: user_[userId]_settings_name;
-    function get_all_required_settings($user_id = 0) {
-        $settings_table = $this->db->dbprefix('settings');
-        $sql = "SELECT $settings_table.setting_name,  $settings_table.setting_value
-        FROM $settings_table
-        WHERE $settings_table.deleted=0 AND ($settings_table.type = 'app' OR ($settings_table.type ='user' AND $settings_table.setting_name LIKE 'user_" . $user_id . "_%'))";
-        return $this->db->query($sql);
-    }
+    public function getAllRequiredSettings($user_id = 0)
+    {
+        $query = $this->select('setting_name, setting_value')
+                      ->where('deleted', 0)
+                      ->where(function($builder) use ($user_id) {
+                          $builder->groupStart()
+                                  ->where('type', 'app')
+                                  ->orWhere(function($builder) use ($user_id) {
+                                      $builder->where('type', 'user')
+                                              ->like('setting_name', 'user_' . $user_id . '_');
+                                  })
+                                ->groupEnd();
+                      })
+                      ->findAll();
 
+        return $query;
+    }
 }

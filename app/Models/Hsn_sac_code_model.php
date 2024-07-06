@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 use CodeIgniter\Model;
 class HsnSacCodeModel extends Model {
@@ -8,8 +7,7 @@ protected $primaryKey = 'id';
 protected $useSoftDeletes = true;
 protected $allowedFields = ['hsn_code', 'hsn_description', 'deleted'];
 protected $returnType = 'array';
-
-    public function getDetails($options = []) {
+public function getDetails($options = []) {
         $id = $options['id'] ?? null;
         $builder = $this->builder($this->table);
         $builder->where('deleted', 0);
@@ -18,8 +16,7 @@ protected $returnType = 'array';
         }
         return $builder->get()->getResultArray();
     }
-
-    public function getItemSuggestion($keyword = "") {
+   public function getItemSuggestion($keyword = "") {
         return $this->like('hsn_code', $keyword)
                     ->where('deleted', 0)
                     ->limit(30)

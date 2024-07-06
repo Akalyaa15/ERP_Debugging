@@ -1,62 +1,64 @@
 <?php
 
-class Todo_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
+class Todo_model extends Model
+{
+    protected $table = 'to_do';
+    protected $primaryKey = 'id';
 
-    function __construct() {
-        $this->table = 'to_do';
-        parent::__construct($this->table);
-    }
+    protected $allowedFields = [
+        'id',
+        'created_by',
+        'title',
+        'status',
+        'labels',
+    ];
 
-    function get_details($options = array()) {
-        $todo_table = $this->db->dbprefix('to_do');
+    protected $useSoftDeletes = true; // Enable soft deletes
 
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where .= " AND $todo_table.id=$id";
+    protected $returnType = 'object'; // Adjust return type as needed
+
+    public function getDetails($options = [])
+    {
+        $builder = $this->select('*')
+                        ->where('deleted', 0); // Assuming 'deleted' column is used for soft deletes
+
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-
-        $created_by = get_array_value($options, "created_by");
-        if ($created_by) {
-            $where .= " AND $todo_table.created_by=$created_by";
+        if (!empty($options['created_by'])) {
+            $builder->where('created_by', $options['created_by']);
         }
 
-
-        $status = get_array_value($options, "status");
-        if ($status) {
-            $where .= " AND FIND_IN_SET($todo_table.status,'$status')";
+        if (!empty($options['status'])) {
+            $builder->whereIn('status', explode(',', $options['status']));
         }
 
-
-        $sql = "SELECT $todo_table.*
-        FROM $todo_table
-        WHERE $todo_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
 
-    function get_label_suggestions($user_id) {
-        $todo_table = $this->db->dbprefix('to_do');
-        $sql = "SELECT GROUP_CONCAT(labels) as label_groups
-        FROM $todo_table
-        WHERE $todo_table.deleted=0 AND $todo_table.created_by=$user_id";
-        return $this->db->query($sql)->row()->label_groups;
+    public function getLabelSuggestions($user_id)
+    {
+        $builder = $this->select('GROUP_CONCAT(labels) as label_groups')
+                        ->where('deleted', 0)
+                        ->where('created_by', $user_id)
+                        ->get();
+
+        return $builder->getRow()->label_groups;
     }
 
-    function get_search_suggestion($search = "", $created_by = 0) {
-        $todo_table = $this->db->dbprefix('to_do');
+    public function getSearchSuggestions($search = "", $created_by = 0)
+    {
+        $builder = $this->select('id, title')
+                        ->like('title', $search)
+                        ->where('deleted', 0)
+                        ->where('created_by', $created_by)
+                        ->orderBy('title', 'ASC')
+                        ->limit(10);
 
-        $search = $this->db->escape_str($search);
-
-        $sql = "SELECT $todo_table.id, $todo_table.title
-        FROM $todo_table  
-        WHERE $todo_table.deleted=0 AND $todo_table.created_by=$created_by AND $todo_table.title LIKE '%$search%'
-        ORDER BY $todo_table.title ASC
-        LIMIT 0, 10";
-
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
-
 }

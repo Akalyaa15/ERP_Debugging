@@ -1,44 +1,46 @@
 <?php
 
-class Ticket_comments_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'ticket_comments';
-        parent::__construct($this->table);
-    }
+class Ticket_comments_model extends Model
+{
+    protected $table = 'ticket_comments';
+    protected $primaryKey = 'id';
 
-    function get_details($options = array()) {
-        $ticket_comments_table = $this->db->dbprefix('ticket_comments');
-        $users_table = $this->db->dbprefix('users');
-        $where = "";
-        $sort= "ASC";
+    protected $allowedFields = [
+        'id',
+        'ticket_id',
+        'comment',
+        'created_by',
+    ];
+
+    protected $useSoftDeletes = true;
+    protected $returnType = 'object';
+
+    public function getDetails($options = [])
+    {
+        $usersTable = 'users'; // Assuming 'users' table is in the same database without prefix
         
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where .= " AND $ticket_comments_table.id=$id";
+        $builder = $this->select("$this->table.*, CONCAT($usersTable.first_name, ' ', $usersTable.last_name) AS created_by_user, $usersTable.image AS created_by_avatar, $usersTable.user_type")
+                        ->join($usersTable, "$usersTable.id = $this->table.created_by", 'left')
+                        ->where('deleted_at', null); // Assuming soft deletes
+
+        if (!empty($options['id'])) {
+            $builder->where("$this->table.id", $options['id']);
         }
 
-        $ticket_id = get_array_value($options, "ticket_id");
-        if ($ticket_id) {
-            $where .= " AND $ticket_comments_table.ticket_id=$ticket_id";
-        }
-        
-        $sort_decending = get_array_value($options, "sort_as_decending");
-        if ($sort_decending) {
-            $sort = "DESC";
+        if (!empty($options['ticket_id'])) {
+            $builder->where("$this->table.ticket_id", $options['ticket_id']);
         }
 
+        if (!empty($options['sort_as_descending'])) {
+            $builder->orderBy("$this->table.created_at", 'DESC');
+        } else {
+            $builder->orderBy("$this->table.created_at", 'ASC');
+        }
 
-
-        $sql = "SELECT $ticket_comments_table.*, CONCAT($users_table.first_name, ' ',$users_table.last_name) AS created_by_user, $users_table.image as created_by_avatar, $users_table.user_type
-        FROM $ticket_comments_table
-        LEFT JOIN $users_table ON $users_table.id= $ticket_comments_table.created_by
-        WHERE $ticket_comments_table.deleted=0 $where
-        ORDER BY $ticket_comments_table.created_at $sort";
-
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
-
 }

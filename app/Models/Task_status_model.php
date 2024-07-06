@@ -1,42 +1,42 @@
 <?php
 
-class Task_status_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'task_status';
-        parent::__construct($this->table);
+class Task_status_model extends Model
+{
+    protected $table = 'task_status';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $task_status_table = $this->db->dbprefix('task_status');
+    public function get_details($options = [])
+    {
+        $builder = $this->db->table('task_status');
+        $builder->select('*');
 
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $task_status_table.id=$id";
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-        $sql = "SELECT $task_status_table.*
-        FROM $task_status_table
-        WHERE $task_status_table.deleted=0 $where
-        ORDER BY $task_status_table.sort ASC";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0)
+                ->orderBy('sort', 'ASC');
+
+        return $builder->get()->getResult();
     }
 
-    function get_max_sort_value() {
-        $task_status_table = $this->db->dbprefix('task_status');
+    public function get_max_sort_value()
+    {
+        $builder = $this->db->table('task_status');
+        $builder->selectMax('sort', 'max_sort')
+                ->where('deleted', 0);
 
-        $sql = "SELECT MAX($task_status_table.sort) as sort
-        FROM $task_status_table
-        WHERE $task_status_table.deleted=0";
-        $result = $this->db->query($sql);
-        if ($result->num_rows()) {
-            return $result->row()->sort;
-        } else {
-            return 0;
-        }
+        $result = $builder->get()->getRow();
+        return ($result) ? $result->max_sort : 0;
     }
-
 }

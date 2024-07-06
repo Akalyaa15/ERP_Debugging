@@ -1,45 +1,49 @@
 <?php
 
-class Student_desk_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'student_desk';
-        parent::__construct($this->table);
-    }
+class Student_desk_model extends Model
+{
+    protected $table = 'student_desk';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true; 
 
-    function get_details($options = array()) {
-        $student_desk_table = $this->db->dbprefix('student_desk');
-        $vap_category_table = $this->db->dbprefix('vap_category');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $student_desk_table.id=$id";
+    protected $returnType = 'object'; 
+    protected $allowedFields = ['date', 'vap_category', 'other_fields']; 
+
+    public function getDetails($options = [])
+    {
+        $builder = $this->select("$this->table.*, vap_category.title AS vap_category_title")
+                        ->join('vap_category', 'vap_category.id = student_desk.vap_category', 'left')
+                        ->where('deleted', 0);
+
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-         $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($student_desk_table.date BETWEEN '$start_date' AND '$end_date') ";
+        $startDate = get_array_value($options, "start_date");
+        $endDate = get_array_value($options, "end_date");
+        if ($startDate && $endDate) {
+            $builder->where("date BETWEEN '$startDate' AND '$endDate'");
         }
 
-        $sql = "SELECT $student_desk_table.*,$vap_category_table.title AS vap_category_title
-        FROM $student_desk_table
-        LEFT JOIN $vap_category_table ON $vap_category_table.id= $student_desk_table.vap_category
-        WHERE $student_desk_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
 
-    function is_student_desk_email_exists($email, $id = 0) {
-        $result = $this->get_all_where(array("email" => $email, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
-        } else {
-            return false;
+    public function isStudentDeskEmailExists($email, $id = 0)
+    {
+        $builder = $this->select('id')
+                        ->where('email', $email)
+                        ->where('deleted', 0);
+
+        if ($id > 0) {
+            $builder->where('id !=', $id);
         }
+
+        $result = $builder->get();
+
+        return ($result->getNumRows() > 0) ? $result->getRow() : false;
     }
-    
-
-
 }

@@ -14,7 +14,7 @@ class HelpCategoriesModel extends Model {
                           (SELECT COUNT($helpArticlesTable.id) 
                            FROM $helpArticlesTable 
                            WHERE $helpArticlesTable.category_id={$this->table}.id 
-                           AND $helpArticlesTable.deleted=0 
+                           AND $helpArticlesTable.deleted=0 d
                            AND $helpArticlesTable.status='active') AS total_articles");
         $builder->where("{$this->table}.deleted", 0);
 

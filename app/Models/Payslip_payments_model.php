@@ -1,76 +1,75 @@
 <?php
 
-class Payslip_payments_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'payslip_payments';
-        parent::__construct($this->table);
+class PayslipPaymentsModel extends Model
+{
+    protected $table = 'payslip_payments';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $payslip_payments_table = $this->db->dbprefix('payslip_payments');
-        $payslip_table = $this->db->dbprefix('payslip');
-        $payment_methods_table = $this->db->dbprefix('payment_methods');
-        $users_table = $this->db->dbprefix('users');
+    public function getDetails($options = [])
+    {
+        $builder = $this->db->table($this->table);
+        $builder->select("$this->table.*, payslip.user_id, payment_methods.title AS payment_method_title, CONCAT(users.first_name, ' ', users.last_name) AS linked_user_name, users.image AS user_id_avatar");
+        $builder->join('payslip', "payslip.id = $this->table.payslip_id AND payslip.deleted = 0", 'left');
+        $builder->join('payment_methods', "payment_methods.id = $this->table.payment_method_id", 'left');
+        $builder->join('users', "users.id = payslip.user_id", 'left');
 
-
-        $where = "";
-
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $payslip_payments_table.id=$id";
+            $builder->where("$this->table.id", $id);
         }
-        $voucher_no = get_array_value($options, "voucher_no");
+
+        $voucher_no = $options['voucher_no'] ?? null;
         if ($voucher_no) {
-            $where .= " AND $payslip_payments_table.voucher_no=$voucher_no";
+            $builder->where("$this->table.voucher_no", $voucher_no);
         }
-        $payslip_id = get_array_value($options, "payslip_id");
+
+        $payslip_id = $options['payslip_id'] ?? null;
         if ($payslip_id) {
-            $where .= " AND $payslip_payments_table.payslip_id=$payslip_id";
+            $builder->where("$this->table.payslip_id", $payslip_id);
         }
 
-        $user_id = get_array_value($options, "user_id");
+        $user_id = $options['user_id'] ?? null;
         if ($user_id) {
-            $where .= " AND $payslip_table.user_id=$user_id";
+            $builder->where("payslip.user_id", $user_id);
         }
 
-        /*$project_id = get_array_value($options, "project_id");
-        if ($project_id) {
-            $where .= " AND $invoices_table.project_id=$project_id";
-        }*/
-
-        $payment_method_id = get_array_value($options, "payment_method_id");
+        $payment_method_id = $options['payment_method_id'] ?? null;
         if ($payment_method_id) {
-            $where .= " AND $payslip_payments_table.payment_method_id=$payment_method_id";
+            $builder->where("$this->table.payment_method_id", $payment_method_id);
         }
 
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
+        $start_date = $options['start_date'] ?? null;
+        $end_date = $options['end_date'] ?? null;
         if ($start_date && $end_date) {
-            $where .= " AND ($payslip_payments_table.payment_date BETWEEN '$start_date' AND '$end_date') ";
+            $builder->where("$this->table.payment_date BETWEEN '$start_date' AND '$end_date'");
         }
 
-        $sql = "SELECT $payslip_payments_table.*, $payslip_table.user_id, $payment_methods_table.title AS payment_method_title,CONCAT($users_table.first_name, ' ', $users_table.last_name) AS linked_user_name ,$users_table.image as user_id_avatar
-        FROM $payslip_payments_table
-        LEFT JOIN $payslip_table ON $payslip_table.id=$payslip_payments_table.payslip_id
-        LEFT JOIN $payment_methods_table ON $payment_methods_table.id = $payslip_payments_table.payment_method_id
-         LEFT JOIN $users_table ON $users_table.id=  $payslip_table.user_id
-        WHERE $payslip_payments_table.deleted=0 AND $payslip_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where("$this->table.deleted", 0);
+        $builder->where("payslip.deleted", 0);
+
+        return $builder->get()->getResult();
     }
 
-    function get_yearly_payments_chart($year) {
-        $payments_table = $this->db->dbprefix('payslip_payments');
-        $invoices_table = $this->db->dbprefix('payslip');
-         
-        $payments = "SELECT SUM($payments_table.amount) AS total, MONTH($payments_table.payment_date) AS month
-            FROM $payments_table
-            LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.payslip_id
-            WHERE $payments_table.deleted=0 AND YEAR($payments_table.payment_date)= $year AND $invoices_table.deleted=0
-            GROUP BY MONTH($payments_table.payment_date)";
-        return $this->db->query($payments)->result();
-    }
+    public function getYearlyPaymentsChart($year)
+    {
+        $builder = $this->db->table($this->table);
+        $builder->select("SUM($this->table.amount) AS total, MONTH($this->table.payment_date) AS month");
+        $builder->join('payslip', "payslip.id = $this->table.payslip_id", 'left');
+        $builder->where("$this->table.deleted", 0);
+        $builder->where("YEAR($this->table.payment_date)", $year);
+        $builder->where("payslip.deleted", 0);
+        $builder->groupBy("MONTH($this->table.payment_date)");
 
+        return $builder->get()->getResult();
+    }
 }

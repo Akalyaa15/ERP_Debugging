@@ -993,5 +993,6 @@ public function assoc_details()
         return $this->response->setJSON(["success" => false]);
     }
 }
+}
 
   

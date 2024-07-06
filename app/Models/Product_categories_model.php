@@ -1,36 +1,45 @@
 <?php
 
-class Product_categories_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'product_categories';
-        parent::__construct($this->table);
+class ProductCategoriesModel extends Model
+{
+    protected $table = 'product_categories';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $expense_categories_table = $this->db->dbprefix('product_categories');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $where = [];
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $expense_categories_table.id=$id";
+            $where['id'] = $id;
         }
 
-        $sql = "SELECT $expense_categories_table.*
-        FROM $expense_categories_table
-        WHERE $expense_categories_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $this->select('*');
+        $this->where($where);
+        $this->where('deleted', 0);
+
+        return $this->get()->getResult();
     }
 
-    function is_product_category_list_exists($title,  $id = 0) {
-        
-        $result = $this->get_all_where(array("title" => $title, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id) {
-            return $result->row();
+    public function isProductCategoryExists($title, $id = 0)
+    {
+        $result = $this->where('title', $title)
+                       ->where('deleted', 0)
+                       ->findAll();
+
+        if (!empty($result) && $result[0]->id != $id) {
+            return $result[0];
         } else {
             return false;
         }
     }
-
 }

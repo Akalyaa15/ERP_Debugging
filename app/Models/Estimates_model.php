@@ -1,22 +1,16 @@
 <?php
-
 class Estimates_model extends Crud_model {
-
-    private $table = null;
-
+private $table = null;
     function __construct() {
         $this->table = 'estimates';
         parent::__construct($this->table);
     }
-
     function get_details($options = array()) {
         $estimates_table = $this->db->dbprefix('estimates');
         $clients_table = $this->db->dbprefix('clients');
-       // $taxes_table = $this->db->dbprefix('taxes');
         $estimate_payments_table = $this->db->dbprefix('estimate_payments');
         $estimate_items_table = $this->db->dbprefix('estimate_items');
         $projects_table = $this->db->dbprefix('projects');
-
         $where = "";
         $id = get_array_value($options, "id");
         if ($id) {
@@ -32,20 +26,14 @@ class Estimates_model extends Crud_model {
         if ($start_date && $end_date) {
             $where .= " AND ($estimates_table.estimate_date BETWEEN '$start_date' AND '$end_date') ";
         }
-
-        $freight_amount = "(IFNULL($estimates_table.freight_amount,0))";
+       $freight_amount = "(IFNULL($estimates_table.freight_amount,0))";
         $estimate_value_calculation = "round(
             IFNULL(items_table.estimate_value,0)+$freight_amount)
            ";
-
-
-        $status = get_array_value($options, "status");
+       $status = get_array_value($options, "status");
         if ($status) {
             $where .= " AND $estimates_table.status='$status'";
         }
-
-        
-
         $exclude_draft = get_array_value($options, "exclude_draft");
         if ($exclude_draft) {
             $where .= " AND $estimates_table.status!='draft' ";

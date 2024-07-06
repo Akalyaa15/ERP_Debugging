@@ -1,27 +1,24 @@
 <?php
 
-class Social_links_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'social_links';
-        parent::__construct($this->table);
-    }
+class SocialLinksModel extends Model
+{
+    protected $table = 'social_links';
+    protected $primaryKey = 'id'; 
+    protected $useSoftDeletes = true; 
+    public function getDetails($options = [])
+    {
+        $builder = $this->select('*')
+                        ->where('deleted', 0);
 
-    function get_details($options = array()) {
-        $social_links_table = $this->db->dbprefix('social_links');
-
-        $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $social_links_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $social_links_table.*
-        FROM $social_links_table
-        WHERE $social_links_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->findAll();
     }
-
 }

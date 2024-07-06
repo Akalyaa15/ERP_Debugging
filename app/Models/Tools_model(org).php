@@ -1,64 +1,70 @@
 <?php
 
-class Tools_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'tools';
-        parent::__construct($this->table);
-    }
+class Tools_model extends Model
+{
+    protected $table = 'tools';
+    protected $primaryKey = 'id'; 
 
-    function get_details($options = array()) {
-        $tools_table = $this->db->dbprefix('tools');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $tools_table.id=$id";
+    protected $allowedFields = [
+        'id',
+        'title',
+    ];
+
+    protected $useSoftDeletes = true; // Enable soft deletes
+
+    protected $returnType = 'object'; // Adjust return type as needed
+
+    public function getDetails($options = [])
+    {
+        $builder = $this->select('*')
+                        ->where('deleted', 0); // Assuming 'deleted' column is used for soft deletes
+
+        if (!empty($options['id'])) {
+            $builder->where('id', $options['id']);
         }
 
-        $sql = "SELECT $tools_table.*
-        FROM $tools_table
-        WHERE $tools_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->get()->getResult();
     }
-function get_item_suggestion($keyword = "") {
-        $tools_table = $this->db->dbprefix('tools');
-        
 
-        $sql = "SELECT $tools_table.title
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$keyword%'
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
-function get_item_suggestions($keyword = "",$d_item="") {
-        $tools_table = $this->db->dbprefix('tools');
-        
+    public function getItemSuggestion($keyword = "")
+    {
+        $builder = $this->select('title')
+                        ->like('title', $keyword)
+                        ->where('deleted', 0)
+                        ->limit(30);
 
-        $sql = "SELECT $tools_table.title
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$keyword%' and  $tools_table.title  NOT IN  $d_item
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
-    function get_item_info_suggestion($item_name = "") {
+        return $builder->get()->getResult();
+    }
 
-        $tools_table = $this->db->dbprefix('tools');
+    public function getItemSuggestions($keyword = "", $excludeItems = [])
+    {
+        $builder = $this->select('title')
+                        ->like('title', $keyword)
+                        ->where('deleted', 0)
+                        ->whereNotIn('title', $excludeItems)
+                        ->limit(30);
 
-        $sql = "SELECT $tools_table.*
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$item_name%'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
+        return $builder->get()->getResult();
+    }
 
-        if ($result->num_rows()) {
-            return $result->row();
+    public function getItemInfoSuggestion($itemName = "")
+    {
+        $builder = $this->select('*')
+                        ->like('title', $itemName)
+                        ->where('deleted', 0)
+                        ->orderBy('id', 'DESC')
+                        ->limit(1);
+
+        $query = $builder->get();
+
+        if ($query->getNumRows() > 0) {
+            return $query->getRow();
         }
 
+        return null;
     }
 }

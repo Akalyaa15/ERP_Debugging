@@ -1,71 +1,82 @@
 <?php
 
-class Purchase_order_payments_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'purchase_order_payments';
-        parent::__construct($this->table);
-    }
+class PurchaseOrderPaymentsModel extends Model
+{
+    protected $table = 'purchase_order_payments';
+    protected $primaryKey = 'id'; 
+    protected $returnType = 'object'; 
 
-    function get_details($options = array()) {
-        $purchase_order_payments_table = $this->db->dbprefix('purchase_order_payments');
-        $purchase_orders_table = $this->db->dbprefix('purchase_orders');
-        $payment_methods_table = $this->db->dbprefix('payment_methods');
-        $vendors_table = $this->db->dbprefix('vendors');
+    public function getDetails($options = [])
+    {
+        $paymentsTable = $this->table;
+        $purchaseOrdersTable = 'purchase_orders'; 
+        $paymentMethodsTable = 'payment_methods'; 
+        $vendorsTable = 'vendors';
 
-        $where = "";
+        $where = [];
 
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $purchase_order_payments_table.id=$id";
+            $where["$paymentsTable.id"] = $id;
         }
 
-        $purchase_order_id = get_array_value($options, "purchase_order_id");
-        if ($purchase_order_id) {
-            $where .= " AND $purchase_order_payments_table.purchase_order_id=$purchase_order_id";
+        $purchaseOrderId = $options['purchase_order_id'] ?? null;
+        if ($purchaseOrderId) {
+            $where["$paymentsTable.purchase_order_id"] = $purchaseOrderId;
         }
 
-        $vendor_id = get_array_value($options, "vendor_id");
-        if ($vendor_id) {
-            $where .= " AND $purchase_orders_table.vendor_id=$vendor_id";
+        $vendorId = $options['vendor_id'] ?? null;
+        if ($vendorId) {
+            $where["$purchaseOrdersTable.vendor_id"] = $vendorId;
         }
 
-        $project_id = get_array_value($options, "project_id");
-        if ($project_id) {
-            $where .= " AND $purchase_orders_table.project_id=$project_id";
+        $projectId = $options['project_id'] ?? null;
+        if ($projectId) {
+            $where["$purchaseOrdersTable.project_id"] = $projectId;
         }
 
-        $payment_method_id = get_array_value($options, "payment_method_id");
-        if ($payment_method_id) {
-            $where .= " AND $purchase_order_payments_table.payment_method_id=$payment_method_id";
+        $paymentMethodId = $options['payment_method_id'] ?? null;
+        if ($paymentMethodId) {
+            $where["$paymentsTable.payment_method_id"] = $paymentMethodId;
         }
 
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($purchase_order_payments_table.payment_date BETWEEN '$start_date' AND '$end_date') ";
+        $startDate = $options['start_date'] ?? null;
+        $endDate = $options['end_date'] ?? null;
+        if ($startDate && $endDate) {
+            $where[] = "($paymentsTable.payment_date BETWEEN '$startDate' AND '$endDate')";
         }
 
-        $sql = "SELECT $purchase_order_payments_table.*, $purchase_orders_table.vendor_id, (SELECT $vendors_table.currency_symbol FROM $vendors_table WHERE $vendors_table.id=$purchase_orders_table.vendor_id limit 1) AS currency_symbol, $payment_methods_table.title AS payment_method_title
-        FROM $purchase_order_payments_table
-        LEFT JOIN $purchase_orders_table ON $purchase_orders_table.id=$purchase_order_payments_table.purchase_order_id
-        LEFT JOIN $payment_methods_table ON $payment_methods_table.id = $purchase_order_payments_table.payment_method_id
-        WHERE $purchase_order_payments_table.deleted=0 AND $purchase_orders_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder = $this->db->table($paymentsTable);
+        $builder->select("$paymentsTable.*, $purchaseOrdersTable.vendor_id, 
+            (SELECT $vendorsTable.currency_symbol FROM $vendorsTable 
+                WHERE $vendorsTable.id=$purchaseOrdersTable.vendor_id LIMIT 1) AS currency_symbol, 
+            $paymentMethodsTable.title AS payment_method_title");
+        $builder->join($purchaseOrdersTable, "$purchaseOrdersTable.id = $paymentsTable.purchase_order_id", 'left');
+        $builder->join($paymentMethodsTable, "$paymentMethodsTable.id = $paymentsTable.payment_method_id", 'left');
+        $builder->where($where);
+        $builder->where("$paymentsTable.deleted", 0);
+        $builder->where("$purchaseOrdersTable.deleted", 0);
+
+        return $builder->get()->getResult();
     }
 
-    function get_yearly_payments_chart($year) {
-        $payments_table = $this->db->dbprefix('purchase_order_payments');
-        $purchase_orders_table = $this->db->dbprefix('purchase_orders');
-         
-        $payments = "SELECT SUM($payments_table.amount) AS total, MONTH($payments_table.payment_date) AS month
-            FROM $payments_table
-            LEFT JOIN $purchase_orders_table ON $purchase_orders_table.id=$payments_table.purchase_order_id
-            WHERE $payments_table.deleted=0 AND YEAR($payments_table.payment_date)= $year AND $purchase_orders_table.deleted=0
-            GROUP BY MONTH($payments_table.payment_date)";
-        return $this->db->query($payments)->result();
-    }
+    public function getYearlyPaymentsChart($year)
+    {
+        $paymentsTable = 'purchase_order_payments'; // Adjust if needed
+        $purchaseOrdersTable = 'purchase_orders'; // Adjust if needed
 
+        $builder = $this->db->table($paymentsTable);
+        $builder->select("SUM($paymentsTable.amount) AS total, MONTH($paymentsTable.payment_date) AS month");
+        $builder->join($purchaseOrdersTable, "$purchaseOrdersTable.id = $paymentsTable.purchase_order_id", 'left');
+        $builder->where("$paymentsTable.deleted", 0);
+        $builder->where("YEAR($paymentsTable.payment_date)", $year);
+        $builder->where("$purchaseOrdersTable.deleted", 0);
+        $builder->groupBy("MONTH($paymentsTable.payment_date)");
+
+        return $builder->get()->getResult();
+    }
 }

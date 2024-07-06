@@ -1,26 +1,31 @@
 <?php
 
-class Taxes_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'taxes';
-        parent::__construct($this->table);
-    }
+class Taxes_model extends Model
+{
+    protected $table = 'taxes';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'id',
+        'name',
+        'rate',
+        'description',
+    ];
 
-    function get_details($options = array()) {
-        $taxes_table = $this->db->dbprefix('taxes');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $taxesTable = $this->table;
+        
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $taxes_table.id=$id";
+            $this->where('id', $id);
         }
 
-        $sql = "SELECT $taxes_table.*
-        FROM $taxes_table
-        WHERE $taxes_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
+        $this->where('deleted', 0);
 
+        return $this->findAll();
+    }
 }

@@ -1,36 +1,41 @@
-<?php 
+<?php
 
-class Rm_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'team';
-        parent::__construct($this->table);
-    }
+class RmModel extends Model
+{
+    protected $table = 'team';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object'; 
+    public function getDetails($options = [])
+    {
+        $teamTable = $this->table;
+        $where = [];
 
-    function get_details($options = array()) {
-        $team_table = $this->db->dbprefix('team');
-        $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $team_table.id=$id";
+            $where["$teamTable.id"] = $id;
         }
 
-        $sql = "SELECT $team_table.*
-        FROM $team_table
-        WHERE $team_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder = $this->db->table($teamTable);
+        $builder->select("*");
+        $builder->where($where);
+        $builder->where('deleted', 0);
+
+        return $builder->get()->getResult();
     }
 
-    function get_members($team_ids = array()) {
-        $team_table = $this->db->dbprefix('team');
-        $team_ids = implode(",", $team_ids);
+    public function getMembers($teamIds = [])
+    {
+        $teamTable = $this->table;
 
-        $sql = "SELECT $team_table.members
-        FROM $team_table
-        WHERE $team_table.deleted=0 AND id in($team_ids)";
-        return $this->db->query($sql);
+        $builder = $this->db->table($teamTable);
+        $builder->select("members");
+        $builder->whereIn('id', $teamIds);
+        $builder->where('deleted', 0);
+
+        return $builder->get()->getResult();
     }
-
 }

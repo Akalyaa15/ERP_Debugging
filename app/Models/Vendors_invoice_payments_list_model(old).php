@@ -26,15 +26,4 @@ class Vendors_invoice_payments_list_model extends Crud_model {
         return $this->db->query($sql);
     }
 
-   /* function get_all_checklist_of_project($vendor_id) {
-        $checklist_items_table = $this->db->dbprefix('vendors_invoice_payments_list');
-        $tasks_table = $this->db->dbprefix('vendors_invoice_lit');
-
-        $sql = "SELECT $checklist_items_table.task_id, $checklist_items_table.title
-        FROM $checklist_items_table
-        LEFT JOIN $tasks_table ON $tasks_table.id = $checklist_items_table.task_id 
-        WHERE $checklist_items_table.deleted=0 AND $tasks_table.project_id = $project_id";
-        return $this->db->query($sql);
-    } */
-
 }

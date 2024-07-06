@@ -1,26 +1,31 @@
 <?php
 
-class Client_groups_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'client_groups';
-        parent::__construct($this->table);
+class ClientGroupsModel extends Model
+{
+    protected $table = 'client_groups';
+    protected $primaryKey = 'id';
+    protected $returnType = 'array';
+    protected $allowedFields = ['id', 'title', 'description', 'deleted'];
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $client_groups_table = $this->db->dbprefix('client_groups');
-        $where = "";
+    public function getDetails($options = [])
+    {
+        $builder = $this->db->table($this->table)
+                            ->where('deleted', 0);
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where = " AND $client_groups_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $client_groups_table.*
-        FROM $client_groups_table
-        WHERE $client_groups_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->get()->getResultArray();
     }
-
 }

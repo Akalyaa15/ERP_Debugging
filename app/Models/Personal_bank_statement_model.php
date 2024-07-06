@@ -1,45 +1,53 @@
 <?php
-class Personal_bank_statement_model extends Crud_model
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class PersonalBankStatementModel extends Model
 {
-	private $table = null;
+    protected $table = 'personal_bank_statement';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
 
-     function __construct() {
-        $this->table = 'personal_bank_statement';
-        parent::__construct($this->table);
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-	function get_details($options = array()) {
-        $bank_statement_table = $this->db->dbprefix('personal_bank_statement');
-        $where = "";
-        $id = get_array_value($options, "id");
-         $user_id = get_array_value($options, "user_id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->db->table($this->table);
+        $builder->select('*');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $bank_statement_table.id=$id";
+            $builder->where('id', $id);
         }
-        if ($user_id) {
-            $where .= " AND $bank_statement_table.user_id=$user_id";
-        }
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($bank_statement_table.ValueName BETWEEN '$start_date' AND '$end_date') ";
-        } 
 
-        $sql = "SELECT $bank_statement_table.*
-        FROM $bank_statement_table
-        WHERE $bank_statement_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $user_id = $options['user_id'] ?? null;
+        if ($user_id) {
+            $builder->where('user_id', $user_id);
+        }
+
+        $start_date = $options['start_date'] ?? null;
+        $end_date = $options['end_date'] ?? null;
+        if ($start_date && $end_date) {
+            $builder->where("ValueName BETWEEN '$start_date' AND '$end_date'");
+        }
+
+        $builder->where('deleted', 0);
+        return $builder->get()->getResult();
     }
 
-	function select()
-	{
-		$this->db->order_by('id', 'DESC');
-		$query = $this->db->get('personal_bank_statement');
-		return $query;
-	}
+    public function select()
+    {
+        return $this->orderBy('id', 'DESC')
+                    ->findAll();
+    }
 
-	function insert($data)
-	{
-		$this->db->insert_batch('personal_bank_statement', $data);
-	}
+    public function insertBatch($data)
+    {
+        return $this->insertBatch($data);
+    }
 }

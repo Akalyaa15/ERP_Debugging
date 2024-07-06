@@ -1,84 +1,88 @@
 <?php
 
-class Tools_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'tools';
-        parent::__construct($this->table);
+class Tools_model extends Model
+{
+    protected $table = 'tools';
+    protected $primaryKey = 'id';
+
+    protected $allowedFields = [
+        'id',
+        'user_id',
+        'company',
+        'vendor_company',
+        'title',
+    ];
+
+    protected $useSoftDeletes = true; // Enable soft deletes
+
+    protected $returnType = 'object'; // Adjust return type as needed
+
+    public function getDetails($options = [])
+    {
+        $builder = $this->select("$this->table.*, CONCAT(users.first_name, ' ', users.last_name) AS linked_user_name, clients.company_name AS client_company, vendors.company_name AS vendor_company")
+                        ->join('clients', 'clients.id = tools.company', 'left')
+                        ->join('vendors', 'vendors.id = tools.vendor_company', 'left')
+                        ->join('users', 'users.id = tools.user_id', 'left')
+                        ->where('tools.deleted', 0); // Assuming 'deleted' column is used for soft deletes
+
+        if (!empty($options['id'])) {
+            $builder->where('tools.id', $options['id']);
+        }
+
+        if (!empty($options['user_id'])) {
+            $builder->where('tools.user_id', $options['user_id']);
+        }
+
+        if (!empty($options['client_id'])) {
+            $builder->where('tools.company', $options['client_id']);
+        }
+
+        if (!empty($options['vendor_id'])) {
+            $builder->where('tools.vendor_company', $options['vendor_id']);
+        }
+
+        return $builder->findAll();
     }
 
-    function get_details($options = array()) {
-        $tools_table = $this->db->dbprefix('tools');
-        $users_table = $this->db->dbprefix('users');
-        $clients_table = $this->db->dbprefix('clients');
-        $vendors_table = $this->db->dbprefix('vendors');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $tools_table.id=$id";
-        }
+    public function getItemSuggestion($keyword = "")
+    {
+        $builder = $this->select('title')
+                        ->like('title', $keyword)
+                        ->where('deleted', 0)
+                        ->limit(30);
 
-        $user_id = get_array_value($options, "user_id");
-        if ($user_id) {
-            $where .= " AND $tools_table.user_id=$user_id";
-        }
-        $client_id = get_array_value($options, "client_id");
-        if ($client_id) {
-            $where .= " AND $tools_table.company=$client_id";
-        }
-        $vendor_id = get_array_value($options, "vendor_id");
-        if ($vendor_id) {
-            $where .= " AND $tools_table.vendor_company=$vendor_id";
-        }
-
-        $sql = "SELECT $tools_table.* ,CONCAT($users_table.first_name, ' ', $users_table.last_name) AS linked_user_name,
-                 $clients_table.company_name AS client_company,$vendors_table.company_name AS vendor_company
-        FROM $tools_table
-        LEFT JOIN $clients_table ON $clients_table.id= $tools_table.company
-        LEFT JOIN $vendors_table ON $vendors_table.id= $tools_table.vendor_company
-        LEFT JOIN $users_table ON $users_table.id= $tools_table.user_id
-        WHERE $tools_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $builder->get()->getResult();
     }
-function get_item_suggestion($keyword = "") {
-        $tools_table = $this->db->dbprefix('tools');
-        
 
-        $sql = "SELECT $tools_table.title
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$keyword%'
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
-function get_item_suggestions($keyword = "",$d_item="") {
-        $tools_table = $this->db->dbprefix('tools');
-        
+    public function getItemSuggestions($keyword = "", $excludeItems = [])
+    {
+        $builder = $this->select('title')
+                        ->like('title', $keyword)
+                        ->where('deleted', 0)
+                        ->whereNotIn('title', $excludeItems)
+                        ->limit(30);
 
-        $sql = "SELECT $tools_table.title
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$keyword%' and  $tools_table.title  NOT IN  $d_item
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
-    function get_item_info_suggestion($item_name = "") {
+        return $builder->get()->getResult();
+    }
 
-        $tools_table = $this->db->dbprefix('tools');
+    public function getItemInfoSuggestion($itemName = "")
+    {
+        $builder = $this->select('*')
+                        ->like('title', $itemName)
+                        ->where('deleted', 0)
+                        ->orderBy('id', 'DESC')
+                        ->limit(1);
 
-        $sql = "SELECT $tools_table.*
-        FROM $tools_table
-        WHERE $tools_table.deleted=0  AND $tools_table.title LIKE '%$item_name%'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
+        $query = $builder->get();
 
-        if ($result->num_rows()) {
-            return $result->row();
+        if ($query->getNumRows() > 0) {
+            return $query->getRow();
         }
 
+        return null;
     }
 }

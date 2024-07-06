@@ -1,66 +1,72 @@
 <?php
 
-class Posts_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'posts';
-        parent::__construct($this->table);
+class PostsModel extends Model
+{
+    protected $table = 'posts';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $posts_table = $this->db->dbprefix('posts');
-        $users_table = $this->db->dbprefix('users');
-        $where = "";
+    public function getDetails($options = [])
+    {
+        $postsTable = $this->table;
+        $usersTable = 'users'; // Assuming 'users' table name
+        $builder = $this->db->table($postsTable);
 
-        $limit = get_array_value($options, "limit");
-        $limit = $limit ? $limit : "20";
-        $offset = get_array_value($options, "offset");
-        $offset = $offset ? $offset : "0";
+        $limit = $options['limit'] ?? 20;
+        $offset = $options['offset'] ?? 0;
 
-        $id = get_array_value($options, "id");
+        $builder->select("$postsTable.*, $postsTable.id AS parent_post_id, CONCAT($usersTable.first_name, ' ', $usersTable.last_name) AS created_by_user, $usersTable.image as created_by_avatar")
+                ->join($usersTable, "$usersTable.id = $postsTable.created_by", 'left')
+                ->where('deleted', 0);
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $posts_table.id=$id";
+            $builder->where("$postsTable.id", $id);
         }
 
-        //show the main posts in descending mode
-        //but show the replies in ascedning mode
-        $sort = " DESC";
-        $post_id = get_array_value($options, "post_id");
+        $post_id = $options['post_id'] ?? null;
         if ($post_id) {
-            $where .= " AND $posts_table.post_id=$post_id";
-            $sort = "ASC";
+            $builder->where("$postsTable.post_id", $post_id);
+            $builder->orderBy("$postsTable.created_at", 'ASC');
         } else {
-            $where .= " AND $posts_table.post_id=0";
+            $builder->where("$postsTable.post_id", 0);
+            $builder->orderBy("$postsTable.created_at", 'DESC');
         }
 
-        $user_id = get_array_value($options, "user_id");
+        $user_id = $options['user_id'] ?? null;
         if ($user_id) {
-            $where .= " AND $posts_table.created_by=$user_id";
+            $builder->where("$postsTable.created_by", $user_id);
         }
 
+        $builder->orderBy("$postsTable.created_at", 'DESC')
+                ->limit($limit, $offset);
 
-        $sql = "SELECT SQL_CALC_FOUND_ROWS $posts_table.*, $posts_table.id AS parent_post_id, CONCAT($users_table.first_name, ' ',$users_table.last_name) AS created_by_user, $users_table.image as created_by_avatar,
-            (SELECT COUNT($posts_table.id) as total_replies FROM $posts_table WHERE $posts_table.post_id=parent_post_id AND $posts_table.deleted=0) AS total_replies
-        FROM $posts_table
-        LEFT JOIN $users_table ON $users_table.id= $posts_table.created_by
-        WHERE $posts_table.deleted=0 $where
-        ORDER BY $posts_table.created_at $sort
-        LIMIT $offset, $limit";
-        $data = new stdClass();
-        $data->result = $this->db->query($sql)->result();
-        $data->found_rows = $this->db->query("SELECT FOUND_ROWS() as found_rows")->row()->found_rows;
-        return $data;
+        $result = new \stdClass();
+        $result->result = $builder->get()->getResult();
+        
+        // Calculate total found rows
+        $builder->select('FOUND_ROWS() as found_rows', false);
+        $totalRows = $builder->get()->getRow();
+        $result->found_rows = $totalRows->found_rows;
+
+        return $result;
     }
 
-    function count_new_posts() {
-        $now = get_current_utc_time("Y-m-d");
-        $posts_table = $this->db->dbprefix('posts');
-        $sql = "SELECT COUNT($posts_table.id) AS total
-        FROM $posts_table
-        WHERE $posts_table.deleted=0 AND $posts_table.post_id=0 AND DATE($posts_table.created_at)='$now'";
-        return $this->db->query($sql)->row()->total;
+    public function countNewPosts()
+    {
+        $now = date('Y-m-d');
+        return $this->where('deleted', 0)
+                    ->where('post_id', 0)
+                    ->where("DATE(created_at)", $now)
+                    ->countAllResults();
     }
-
 }
