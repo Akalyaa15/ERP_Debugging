@@ -4,12 +4,12 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class EventsModel extends CrudModel
+class EventsModel extends Model
 {
     protected $table = 'events';
     protected $primaryKey = 'id';
     protected $returnType = 'object';
-    protected $useSoftDeletes = false; // Assuming deleted field handling is not required
+    protected $useSoftDeletes = false; 
 
     public function __construct()
     {

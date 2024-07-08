@@ -1,6 +1,9 @@
 <?php
+
 namespace App\Models;
+
 use CodeIgniter\Model;
+
 class ExpenseCategoriesModel extends Model
 {
     protected $table = 'expense_categories';
@@ -11,7 +14,7 @@ class ExpenseCategoriesModel extends Model
 
     public function getDetails($options = [])
     {
-        $builder = $this->builder($this->table);
+        $builder = $this->builder();
         $builder->select('*');
 
         $id = $options['id'] ?? null;
@@ -22,5 +25,4 @@ class ExpenseCategoriesModel extends Model
         $builder->where('deleted', 0);
         $query = $builder->get();
         return $query->getResultArray();
-    }
-}
+    }}

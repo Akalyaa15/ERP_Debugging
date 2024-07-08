@@ -1,26 +1,29 @@
 <?php
 
-class Vat_types_model extends Crud_model {
+namespace App\Models;
+use CodeIgniter\Model;
+class VatTypesModel extends Model
+{
+    protected $table = 'vat_types';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'name', 'rate', 'deleted'
+    ];
+    protected $returnType = 'object';
 
-    private $table = null;
-
-    function __construct() {
-        $this->table = 'vat_types';
-        parent::__construct($this->table);
-    }
-
-    function get_details($options = array()) {
-        $vat_types_table = $this->db->dbprefix('vat_types');
+    public function getDetails($options = [])
+    {
+        $vatTypesTable = $this->db->prefixTable('vat_types');
         $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $vat_types_table.id=$id";
+
+        if (!empty($options['id'])) {
+            $where = " AND $vatTypesTable.id=" . $this->db->escape($options['id']);
         }
 
-        $sql = "SELECT $vat_types_table.*
-        FROM $vat_types_table
-        WHERE $vat_types_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
+        $sql = "SELECT $vatTypesTable.*
+                FROM $vatTypesTable
+                WHERE $vatTypesTable.deleted=0 $where";
 
+        return $this->db->query($sql)->getResult();
+    }
 }

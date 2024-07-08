@@ -1,6 +1,6 @@
 <?php
 
-class Invoices_model extends Crud_model {
+class Invoices_model extends Models{
 
     private $table = null;
 
@@ -9,7 +9,7 @@ class Invoices_model extends Crud_model {
         parent::__construct($this->table);
     }
 
-    function get_details($options = array()) {
+    public function get_details($options = []) {
         $invoices_table = $this->db->dbprefix('invoices');
         $clients_table = $this->db->dbprefix('clients');
         $projects_table = $this->db->dbprefix('projects');
@@ -124,7 +124,7 @@ class Invoices_model extends Crud_model {
         return $this->db->query($sql);
     }
 
-    function get_invoice_total_summary($invoice_id = 0) {
+    public function get_invoice_total_summary($invoice_id = 0) {
         $invoice_items_table = $this->db->dbprefix('invoice_items');
         $invoice_payments_table = $this->db->dbprefix('invoice_payments');
         $invoices_table = $this->db->dbprefix('invoices');
@@ -228,7 +228,7 @@ class Invoices_model extends Crud_model {
         return $result;
     }
 
-    function invoice_statistics($options = array()) {
+   public function invoice_statistics($options = []) {
         $invoices_table = $this->db->dbprefix('invoices');
         $invoice_payments_table = $this->db->dbprefix('invoice_payments');
         $invoice_items_table = $this->db->dbprefix('invoice_items');
@@ -262,7 +262,7 @@ class Invoices_model extends Crud_model {
         return $info;
     }
 
-    function get_invoices_total_and_paymnts() {
+    public function get_invoices_total_and_paymnts() {
         $invoices_table = $this->db->dbprefix('invoices');
         $invoice_payments_table = $this->db->dbprefix('invoice_payments');
         $invoice_items_table = $this->db->dbprefix('invoice_items');

@@ -1,71 +1,88 @@
 <?php
 
-class Invoice_payments_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'invoice_payments';
-        parent::__construct($this->table);
-    }
+class InvoicePaymentsModel extends Model
+{
+    protected $table = 'invoice_payments';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'invoice_id',
+        'payment_date',
+        'amount',
+        'payment_method_id',
+    ];
 
-    function get_details($options = array()) {
-        $invoice_payments_table = $this->db->dbprefix('invoice_payments');
-        $invoices_table = $this->db->dbprefix('invoices');
-        $payment_methods_table = $this->db->dbprefix('payment_methods');
-        $clients_table = $this->db->dbprefix('clients');
+    public function getDetails($options = [])
+    {
+        $invoicePaymentsTable = $this->table;
+        $invoicesTable = $this->db->prefixTable('invoices');
+        $paymentMethodsTable = $this->db->prefixTable('payment_methods');
+        $clientsTable = $this->db->prefixTable('clients');
 
-        $where = "";
+        $where = [];
 
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $invoice_payments_table.id=$id";
+            $where[] = "$invoicePaymentsTable.id = $id";
         }
 
-        $invoice_id = get_array_value($options, "invoice_id");
-        if ($invoice_id) {
-            $where .= " AND $invoice_payments_table.invoice_id=$invoice_id";
+        $invoiceId = $options['invoice_id'] ?? null;
+        if ($invoiceId) {
+            $where[] = "$invoicePaymentsTable.invoice_id = $invoiceId";
         }
 
-        $client_id = get_array_value($options, "client_id");
-        if ($client_id) {
-            $where .= " AND $invoices_table.client_id=$client_id";
+        $clientId = $options['client_id'] ?? null;
+        if ($clientId) {
+            $where[] = "$invoicesTable.client_id = $clientId";
         }
 
-        $project_id = get_array_value($options, "project_id");
-        if ($project_id) {
-            $where .= " AND $invoices_table.project_id=$project_id";
+        $projectId = $options['project_id'] ?? null;
+        if ($projectId) {
+            $where[] = "$invoicesTable.project_id = $projectId";
         }
 
-        $payment_method_id = get_array_value($options, "payment_method_id");
-        if ($payment_method_id) {
-            $where .= " AND $invoice_payments_table.payment_method_id=$payment_method_id";
+        $paymentMethodId = $options['payment_method_id'] ?? null;
+        if ($paymentMethodId) {
+            $where[] = "$invoicePaymentsTable.payment_method_id = $paymentMethodId";
         }
 
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($invoice_payments_table.payment_date BETWEEN '$start_date' AND '$end_date') ";
+        $startDate = $options['start_date'] ?? null;
+        $endDate = $options['end_date'] ?? null;
+        if ($startDate && $endDate) {
+            $where[] = "($invoicePaymentsTable.payment_date BETWEEN '$startDate' AND '$endDate')";
         }
 
-        $sql = "SELECT $invoice_payments_table.*, $invoices_table.client_id, (SELECT $clients_table.currency_symbol FROM $clients_table WHERE $clients_table.id=$invoices_table.client_id limit 1) AS currency_symbol, $payment_methods_table.title AS payment_method_title
-        FROM $invoice_payments_table
-        LEFT JOIN $invoices_table ON $invoices_table.id=$invoice_payments_table.invoice_id
-        LEFT JOIN $payment_methods_table ON $payment_methods_table.id = $invoice_payments_table.payment_method_id
-        WHERE $invoice_payments_table.deleted=0 AND $invoices_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $invoicePaymentsTable.*, $invoicesTable.client_id, 
+                       (SELECT $clientsTable.currency_symbol FROM $clientsTable WHERE $clientsTable.id = $invoicesTable.client_id LIMIT 1) AS currency_symbol, 
+                       $paymentMethodsTable.title AS payment_method_title
+                FROM $invoicePaymentsTable
+                LEFT JOIN $invoicesTable ON $invoicesTable.id = $invoicePaymentsTable.invoice_id
+                LEFT JOIN $paymentMethodsTable ON $paymentMethodsTable.id = $invoicePaymentsTable.payment_method_id
+                $whereClause
+                AND $invoicePaymentsTable.deleted = 0
+                AND $invoicesTable.deleted = 0";
+
+        return $this->db->query($sql)->getResult();
     }
 
-    function get_yearly_payments_chart($year) {
-        $payments_table = $this->db->dbprefix('invoice_payments');
-        $invoices_table = $this->db->dbprefix('invoices');
-         
-        $payments = "SELECT SUM($payments_table.amount) AS total, MONTH($payments_table.payment_date) AS month
-            FROM $payments_table
-            LEFT JOIN $invoices_table ON $invoices_table.id=$payments_table.invoice_id
-            WHERE $payments_table.deleted=0 AND YEAR($payments_table.payment_date)= $year AND $invoices_table.deleted=0
-            GROUP BY MONTH($payments_table.payment_date)";
-        return $this->db->query($payments)->result();
-    }
+    public function getYearlyPaymentsChart($year)
+    {
+        $paymentsTable = $this->table;
+        $invoicesTable = $this->db->prefixTable('invoices');
 
+        $payments = "SELECT SUM($paymentsTable.amount) AS total, MONTH($paymentsTable.payment_date) AS month
+            FROM $paymentsTable
+            LEFT JOIN $invoicesTable ON $invoicesTable.id = $paymentsTable.invoice_id
+            WHERE $paymentsTable.deleted = 0 
+            AND YEAR($paymentsTable.payment_date) = $year 
+            AND $invoicesTable.deleted = 0
+            GROUP BY MONTH($paymentsTable.payment_date)";
+
+        return $this->db->query($payments)->getResult();
+    }
 }

@@ -1,136 +1,125 @@
 <?php
 
-class Payment_methods_model extends Crud_model {
+namespace App\Models;
+use CodeIgniter\Model;
+class Payment_methods_model extends Model
+{
+    protected $table = 'payment_methods';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
 
-    private $table = null;
-
-    function __construct() {
-        $this->table = 'payment_methods';
-        parent::__construct($this->table);
+    public function __construct()
+    {
+        parent::__construct();
     }
+    public function get_settings($type = "")
+    {
+        $settings = [
+            "stripe" => [
+                ["name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "Stripe"],
+                ["name" => "secret_key", "text" => "Secret Key", "type" => "text", "default" => ""],
+                ["name" => "publishable_key", "text" => "Publishable Key", "type" => "text", "default" => ""]
+            ],
+            "paypal_payments_standard" => [
+                ["name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "PayPal Standard"],
+                ["name" => "email", "text" => "Email", "type" => "text", "default" => ""],
+                ["name" => "paypal_live", "text" => "Paypal Live", "type" => "boolean", "default" => "0"],
+                ["name" => "debug", "text" => "Enable Debug", "type" => "boolean", "default" => "0", "help_text" => "Save logs in a file (paypal.log) in root directory during processing the IPN"],
+                ["name" => "paypal_ipn_url", "text" => "Paypal IPN URL", "type" => "readonly", "default" => get_uri("paypal_ipn")]
+            ],
+            "khipu" => [
+                ["name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "PayPal Pro"],
+                ["name" => "api_username", "text" => "API Username", "type" => "text", "default" => ""],
+                ["name" => "api_password", "text" => "API Password", "type" => "text", "default" => ""],
+                ["name" => "api_signature", "text" => "API Signature", "type" => "text", "default" => ""],
+                ["name" => "paypal_live", "text" => "Paypal Live", "type" => "boolean", "default" => "0"]
+            ],
+            "net_banking" => [
+                ["name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "Net Banking"]
+            ]
+        ];
 
-    //define different types of payment gateway settings
-    function get_settings($type = "") {
-        $settings = array(
-            "stripe" => array(
-                array("name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "Stripe"),
-                array("name" => "secret_key", "text" => "Secret Key", "type" => "text", "default" => ""),
-                array("name" => "publishable_key", "text" => "Publishable Key", "type" => "text", "default" => "")
-            ),
-            "paypal_payments_standard" => array(
-                array("name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "PayPal Standard"),
-                array("name" => "email", "text" => "Email", "type" => "text", "default" => ""),
-                array("name" => "paypal_live", "text" => "Paypal Live", "type" => "boolean", "default" => "0"),
-                array("name" => "debug", "text" => "Enable Debug", "type" => "boolean", "default" => "0", "help_text" => "Save logs in a file (paypal.log) in root directory during processing the IPN"),
-                array("name" => "paypal_ipn_url", "text" => "Paypal IPN URL", "type" => "readonly", "default" => get_uri("paypal_ipn")),
-            ),
-
-            "khipu" => array(
-                array("name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "PayPal Pro"),
-                array("name" => "api_username", "text" => "API Username", "type" => "text", "default" => ""),
-                array("name" => "api_password", "text" => "API Password", "type" => "text", "default" => ""),
-                array("name" => "api_signature", "text" => "API Signature", "type" => "text", "default" => ""),
-                array("name" => "paypal_live", "text" => "Paypal Live", "type" => "boolean", "default" => "0")
-            ),
-             "net_banking" => array(
-                array("name" => "pay_button_text", "text" => lang("pay_button_text"), "type" => "text", "default" => "Net Banking"),
-               
-            )
-        );
         if ($type) {
-            return get_array_value($settings, $type);
+            return $settings[$type] ?? [];
         } else {
-            return array();
+            return [];
         }
     }
 
-    function get_one_with_settings($id = 0) {
-        $info = $this->get_one($id);
+    public function get_one_with_settings($id = 0)
+    {
+        $info = $this->find($id);
         return $this->_merge_online_settings_with_default($info);
     }
 
-    function get_oneline_payment_method($type) {
-        $info = $this->get_one_where(array("deleted" => 0, "type" => $type, "online_payable" => 1));
+    public function get_oneline_payment_method($type)
+    {
+        $info = $this->where('deleted', 0)->where('type', $type)->where('online_payable', 1)->first();
         return $this->_merge_online_settings_with_default($info);
     }
 
-    private function _merge_online_settings_with_default($info) {
+    private function _merge_online_settings_with_default($info)
+    {
         $settings = $this->get_settings($info->type);
-        $settings_data = $info->settings ? @unserialize($info->settings) : array();
+        $settings_data = unserialize($info->settings) ?: [];
 
-        if (!is_array($settings_data)) {
-            $settings_data = array();
-        }
-
-        if (is_array($settings)) {
-            foreach ($settings as $setting) {
-                $setting_name = is_array($setting) ? get_array_value($setting, "name") : "";
-                $info->$setting_name = get_array_value($settings_data, $setting_name);
-                if (!$info->$setting_name) {
-                    $info->$setting_name = get_array_value($setting, "default");
-                }
-            }
+        foreach ($settings as $setting) {
+            $setting_name = is_array($setting) ? $setting['name'] : '';
+            $info->$setting_name = $settings_data[$setting_name] ?? $setting['default'];
         }
 
         return $info;
     }
 
-    function get_details($options = array()) {
-        $payment_methods_table = $this->db->dbprefix('payment_methods');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $payment_methods_table.id=$id";
-        }
+    public function get_details($options = [])
+    {
+        $id = $options['id'] ?? null;
+        $where = $id ? "id=$id" : '';
 
-        $sql = "SELECT $payment_methods_table.*
-        FROM $payment_methods_table
-        WHERE $payment_methods_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $this->where('deleted', 0)->where($where)->findAll();
     }
 
-    function delete($id = 0, $undo = false) {
-
-        $exists = $this->get_one_where($where = array("id" => $id));
-        if ($exists->online_payable == 1) {
-            //online payable types can't be deleted
+    public function delete($id = 0, $undo = false)
+    {
+        $exists = $this->find($id);
+        if ($exists && $exists->online_payable == 1) {
+            // Online payable types can't be deleted
             return false;
         } else {
             return parent::delete($id, $undo);
         }
     }
 
-    function get_available_online_payment_methods() {
+    public function get_available_online_payment_methods()
+    {
+        $settings = $this->where('deleted', 0)->where('online_payable', 1)->where('available_on_invoice', 1)->findAll();
 
-        $settings = $this->get_all_where(array("deleted" => 0, "online_payable" => 1, "available_on_invoice" => 1))->result();
-
-        $final_settings = array();
+        $final_settings = [];
         foreach ($settings as $setting) {
-            $final_settings[] = (array) $this->_merge_online_settings_with_default($setting);
+            $final_settings[] = $this->_merge_online_settings_with_default($setting);
         }
         return $final_settings;
     }
 
-    function get_available_purchase_order_net_banking_payment_methods() {
+    public function get_available_purchase_order_net_banking_payment_methods()
+    {
+        $settings = $this->where('deleted', 0)->where('online_payable', 1)->where('available_on_purchase_order', 1)->findAll();
 
-        $settings = $this->get_all_where(array("deleted" => 0, "online_payable" => 1, "available_on_purchase_order" => 1))->result();
-
-        $final_settings = array();
+        $final_settings = [];
         foreach ($settings as $setting) {
-            $final_settings[] = (array) $this->_merge_online_settings_with_default($setting);
-        }
-        return $final_settings;
-    }
-    function get_available_work_order_net_banking_payment_methods() {
-
-        $settings = $this->get_all_where(array("deleted" => 0, "online_payable" => 1, "available_on_work_order" => 1))->result();
-
-        $final_settings = array();
-        foreach ($settings as $setting) {
-            $final_settings[] = (array) $this->_merge_online_settings_with_default($setting);
+            $final_settings[] = $this->_merge_online_settings_with_default($setting);
         }
         return $final_settings;
     }
 
+    public function get_available_work_order_net_banking_payment_methods()
+    {
+        $settings = $this->where('deleted', 0)->where('online_payable', 1)->where('available_on_work_order', 1)->findAll();
 
+        $final_settings = [];
+        foreach ($settings as $setting) {
+            $final_settings[] = $this->_merge_online_settings_with_default($setting);
+        }
+        return $final_settings;
+    }
 }

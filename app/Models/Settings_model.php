@@ -3,25 +3,20 @@
 namespace App\Models;
 
 use CodeIgniter\Model;
-
 class SettingsModel extends Model
 {
     protected $table = 'settings';
     protected $primaryKey = 'id';
     protected $returnType = 'object'; 
-
     public function getSetting($setting_name)
     {
         $query = $this->where('setting_name', $setting_name)
                       ->where('deleted', 0)
                       ->first();
-
-        if ($query) {
+  if ($query) {
             return $query->setting_value;
         }
-    }
-
-    public function saveSetting($setting_name, $setting_value, $type = 'app')
+    }public function saveSetting($setting_name, $setting_value, $type = 'app')
     {
         $exists = $this->getSetting($setting_name);
 
@@ -39,7 +34,6 @@ class SettingsModel extends Model
             return true;
         }
     }
-
     public function getAllRequiredSettings($user_id = 0)
     {
         $query = $this->select('setting_name, setting_value')
@@ -56,5 +50,4 @@ class SettingsModel extends Model
                       ->findAll();
 
         return $query;
-    }
-}
+    }}

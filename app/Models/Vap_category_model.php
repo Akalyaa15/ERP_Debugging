@@ -1,30 +1,29 @@
 <?php
 
-class Vap_category_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'vap_category';
-        parent::__construct($this->table);
-    }
+class VapCategoryModel extends Model
+{
+    protected $table = 'vap_category';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['title', 'description', 'created_at', 'deleted'];
+    protected $returnType = 'array';
 
-    function get_details($options = array()) {
-        $vap_category_table = $this->db->dbprefix('vap_category');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->builder();
+        $builder->select('*');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $vap_category_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $vap_category_table.*
-        FROM $vap_category_table
-        WHERE $vap_category_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0);
+        $query = $builder->get();
+        return $query->getResultArray();
     }
-
-    
-    
-
-
 }

@@ -1,26 +1,25 @@
 <?php
 
-class Payment_status_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'payment_status';
-        parent::__construct($this->table);
+class Payment_status_model extends Model
+{
+    protected $table = 'payment_status';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $payment_status_table = $this->db->dbprefix('payment_status');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $payment_status_table.id=$id";
-        }
+    public function get_details($options = [])
+    {
+        $id = $options['id'] ?? null;
+        $where = $id ? "id=$id" : '';
 
-        $sql = "SELECT $payment_status_table.*
-        FROM $payment_status_table
-        WHERE $payment_status_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $this->where('deleted', 0)->where($where)->findAll();
     }
-
 }

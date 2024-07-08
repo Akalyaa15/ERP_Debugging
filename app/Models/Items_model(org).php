@@ -1,26 +1,31 @@
 <?php
 
-class Items_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'items';
-        parent::__construct($this->table);
-    }
+class ItemsModel extends Model
+{
+    protected $table = 'items';
+    protected $primaryKey = 'id';
 
-    function get_details($options = array()) {
-        $items_table = $this->db->dbprefix('items');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $itemsTable = $this->table;
+        $where = [];
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $items_table.id=$id";
+            $where[] = "$itemsTable.id = $id";
         }
 
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        WHERE $items_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
+        $sql = "SELECT $itemsTable.*
+                FROM $itemsTable
+                WHERE $itemsTable.deleted = 0
+                $whereClause";
+
+        return $this->db->query($sql)->getResult();
+    }
 }

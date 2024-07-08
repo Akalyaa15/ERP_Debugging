@@ -1,39 +1,62 @@
 <?php
 
-class Purchase_order_items_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'purchase_order_items';
-        parent::__construct($this->table);
+class Purchase_order_items_model extends Model
+{
+    protected $table = 'purchase_order_items';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['purchase_order_id', 'title', 'description', 'quantity', 'unit_price', 'tax', 'total', 'status', 'deleted'];
+
+    public function __construct()
+    {
+        parent::__construct();
     }
-     public function get_details($options = array()) {
-        $estimate_items_table = $this->db->dbprefix('purchase_order_items');
-        $estimates_table = $this->db->dbprefix('purchase_orders');
-        $clients_table = $this->db->dbprefix('vendors');
-        $where = "";
-        $id = get_array_value($options, "id");
+
+    public function get_details($options = [])
+    {
+        $builder = $this->db->table($this->table);
+        $estimate_items_table = $builder->getName();
+        $estimates_table = 'purchase_orders'; // adjust table names as per your database
+        $clients_table = 'vendors';
+        $where = [];
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $estimate_items_table.id=$id";
+            $builder->where("$estimate_items_table.id", $id);
         }
-        $purchase_order_id = get_array_value($options, "purchase_order_id");
+
+        $purchase_order_id = $options['purchase_order_id'] ?? null;
         if ($purchase_order_id) {
-            $where .= " AND $estimate_items_table.purchase_order_id=$purchase_order_id";
+            $builder->where("$estimate_items_table.purchase_order_id", $purchase_order_id);
         }
-      $sql = "SELECT $estimate_items_table.*, (SELECT $clients_table.currency_symbol FROM $clients_table WHERE $clients_table.id=$estimates_table.vendor_id limit 1) AS currency_symbol
-        FROM $estimate_items_table
-        LEFT JOIN $estimates_table ON $estimates_table.id=$estimate_items_table.purchase_order_id
-        WHERE $estimate_items_table.deleted=0 $where";
-        return $this->db->query($sql);  
+
+        $builder->select("$estimate_items_table.*, 
+            (SELECT $clients_table.currency_symbol FROM $clients_table 
+            WHERE $clients_table.id = $estimates_table.vendor_id 
+            LIMIT 1) AS currency_symbol")
+            ->join($estimates_table, "$estimates_table.id = $estimate_items_table.purchase_order_id", 'left')
+            ->where("$estimate_items_table.deleted", 0);
+
+        return $builder->get();
     }
-   public function is_po_product_exists($title,$purchase_order_id, $id = 0) {
-        $result = $this->get_all_where(array("title" => $title ,"purchase_order_id" => $purchase_order_id, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
+
+    public function is_po_product_exists($title, $purchase_order_id, $id = 0)
+    {
+        $builder = $this->db->table($this->table);
+        $builder->where('title', $title)
+                ->where('purchase_order_id', $purchase_order_id)
+                ->where('deleted', 0);
+
+        $result = $builder->get()->getRow();
+
+        if ($result && $result->id != $id) {
+            return $result;
         } else {
             return false;
         }
     }
-
 }

@@ -1,30 +1,30 @@
 <?php
 
-class Lut_number_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'lut_number';
-        parent::__construct($this->table);
-    }
+class LutNumberModel extends Model
+{
+    protected $table = 'lut_number';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['number', 'description', 'created_at', 'deleted'];
+    protected $returnType = 'array';
 
-    function get_details($options = array()) {
-        $lut_number_table = $this->db->dbprefix('lut_number');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->builder();
+        $builder->select('*');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $lut_number_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $lut_number_table.*
-        FROM $lut_number_table
-        WHERE $lut_number_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0);
+        $query = $builder->get();
+        return $query->getResultArray();
     }
-
-    
-    
-
 
 }

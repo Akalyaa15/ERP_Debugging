@@ -1,12 +1,17 @@
 <?php
 
-class Paypal_ipn_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'paypal_ipn';
-        parent::__construct($this->table);
+class Paypal_ipn_model extends Model
+{
+    protected $table = 'paypal_ipn';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
-
 }

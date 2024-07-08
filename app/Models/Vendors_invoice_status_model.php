@@ -1,42 +1,49 @@
 <?php
 
-class vendors_invoice_status_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'vendors_invoice_status';
-        parent::__construct($this->table);
-    }
+class VendorsInvoiceStatusModel extends CrudModel
+{
+    protected $table = 'vendors_invoice_status';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'title', 'key_name', 'color', 'sort', 'deleted'
+    ];
+    protected $returnType = 'object';
 
-    function get_details($options = array()) {
-        $task_status_table = $this->db->dbprefix('vendors_invoice_status');
+    public function getDetails($options = [])
+    {
+        $taskStatusTable = $this->db->prefixTable('vendors_invoice_status');
 
         $where = "";
         $id = get_array_value($options, "id");
         if ($id) {
-            $where = " AND $task_status_table.id=$id";
+            $where = " AND $taskStatusTable.id = " . $this->db->escape($id);
         }
 
-        $sql = "SELECT $task_status_table.*
-        FROM $task_status_table
-        WHERE $task_status_table.deleted=0 $where
-        ORDER BY $task_status_table.sort ASC";
-        return $this->db->query($sql);
+        $sql = "SELECT *
+                FROM $taskStatusTable
+                WHERE deleted = 0 $where
+                ORDER BY sort ASC";
+
+        return $this->db->query($sql)->getResult();
     }
 
-    function get_max_sort_value() {
-        $task_status_table = $this->db->dbprefix('vendors_invoice_status');
+    public function getMaxSortValue()
+    {
+        $taskStatusTable = $this->db->prefixTable('vendors_invoice_status');
 
-        $sql = "SELECT MAX($task_status_table.sort) as sort
-        FROM $task_status_table
-        WHERE $task_status_table.deleted=0";
+        $sql = "SELECT MAX(sort) as sort
+                FROM $taskStatusTable
+                WHERE deleted = 0";
+
         $result = $this->db->query($sql);
         if ($result->num_rows()) {
-            return $result->row()->sort;
+            return $result->getRow()->sort;
         } else {
             return 0;
         }
     }
-
 }

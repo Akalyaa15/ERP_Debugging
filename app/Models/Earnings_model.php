@@ -9,8 +9,7 @@ class Earnings_model extends Model
     protected $table = 'earnings';
     protected $primaryKey = 'id';
     protected $useSoftDeletes = true;
-    protected $allowedFields = ['field_name', 'status', 'key_name', 'deleted']; // Adjust as per your actual field names
-
+    protected $allowedFields = ['field_name', 'status', 'key_name', 'deleted'];
     public function __construct()
     {
         parent::__construct();

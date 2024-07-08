@@ -1,94 +1,101 @@
 <?php
 
-class Job_id_generation_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'job_id_generation';
-        parent::__construct($this->table);
-    }
-
-    function get_details($options = array()) {
-        $job_id_generation_table = $this->db->dbprefix('job_id_generation');
-        $vendors_table = $this->db->dbprefix('vendors');
-        //$part_no_generation_table$taxes_table = $this->db->dbprefix('taxes');
-        $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where .= " AND $job_id_generation_table.id=$id";
-        }
-       $job_id = get_array_value($options, "job_id");
-        if ($job_id) {
-            $where .= " AND $job_id_generation_table.title='$job_id'";
-        }
-        
-        $group_id = get_array_value($options, "group_id");
-        if ($group_id) {
-            $where = " AND FIND_IN_SET('$group_id', 
-            $job_id_generation_table.vendor_id)";
-        }
-
-        $sql = "SELECT $job_id_generation_table.*,(SELECT  GROUP_CONCAT($vendors_table.id) FROM $vendors_table WHERE FIND_IN_SET($vendors_table.id, 
-        $job_id_generation_table.vendor_id)) AS groups
-        FROM $job_id_generation_table
-        
-        WHERE $job_id_generation_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
-
-    function get_job_id_suggestion($keyword = "",$d_item="") {
-        $job_id_generation_table = $this->db->dbprefix('job_id_generation');
-        
-
-        $sql = "SELECT $job_id_generation_table.title
-        FROM $job_id_generation_table
-        WHERE $job_id_generation_table.deleted=0  AND $job_id_generation_table.title LIKE '%$keyword%'and  $job_id_generation_table.title  NOT IN  $d_item
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
-
-    function get_job_id_info_suggestion($item_name = "") {
-
-        $job_id_generation_table = $this->db->dbprefix('job_id_generation');
-
-       $sql = "SELECT $job_id_generation_table.*
-        FROM $job_id_generation_table
-        WHERE $job_id_generation_table.deleted=0  AND $job_id_generation_table.title LIKE '%$item_name%'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
-
-        if ($result->num_rows()) {
-            return $result->row();
-        }
-
-    }
-
-    function get_item_suggestionss($s = "") 
+class JobIdGenerationModel extends Model
 {
- $purchase_orders_table = $this->db->dbprefix('purchase_orders');        
- $vendors_table = $this->db->dbprefix('vendors');
+    protected $table = 'job_id_generation';
+    protected $primaryKey = 'id';
 
-        $sql = "SELECT $vendors_table.currency , $vendors_table.country
-        FROM $vendors_table
-        LEFT JOIN $purchase_orders_table ON $purchase_orders_table.vendor_id=$vendors_table.id
-        WHERE $vendors_table.deleted=0  AND $purchase_orders_table.id='$s'
-        LIMIT 1 
-        ";
-        return $this->db->query($sql)->row();
-     }
-
-
-     function is_job_id_generation_exists($title, $id = 0) {
-        $result = $this->get_all_where(array("title" => $title, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
-        } else {
-            return false;
-        }
+    public function __construct()
+    {
+        parent::__construct();
     }
 
+    public function getDetails($options = [])
+    {
+        $jobIdGenerationTable = $this->table;
+        $vendorsTable = $this->db->dbprefix('vendors');
+        $where = [];
+
+        $id = $options['id'] ?? null;
+        if ($id) {
+            $where[] = "$jobIdGenerationTable.id = $id";
+        }
+
+        $jobId = $options['job_id'] ?? null;
+        if ($jobId) {
+            $where[] = "$jobIdGenerationTable.title = '$jobId'";
+        }
+
+        $groupId = $options['group_id'] ?? null;
+        if ($groupId) {
+            $where[] = "FIND_IN_SET('$groupId', $jobIdGenerationTable.vendor_id)";
+        }
+
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $jobIdGenerationTable.*, 
+                       (SELECT GROUP_CONCAT($vendorsTable.id) FROM $vendorsTable WHERE FIND_IN_SET($vendorsTable.id, $jobIdGenerationTable.vendor_id)) AS groups
+                FROM $jobIdGenerationTable
+                WHERE $jobIdGenerationTable.deleted = 0
+                $whereClause";
+
+        return $this->db->query($sql)->getResult();
+    }
+
+    public function getJobIdSuggestions($keyword = "", $dItem = "")
+    {
+        $jobIdGenerationTable = $this->table;
+
+        $sql = "SELECT $jobIdGenerationTable.title
+                FROM $jobIdGenerationTable
+                WHERE $jobIdGenerationTable.deleted = 0  
+                      AND $jobIdGenerationTable.title LIKE '%$keyword%'
+                      AND $jobIdGenerationTable.title NOT IN ($dItem)
+                LIMIT 30";
+
+        return $this->db->query($sql)->getResult();
+    }
+
+    public function getJobIdInfoSuggestion($itemName = "")
+    {
+        $jobIdGenerationTable = $this->table;
+
+        $sql = "SELECT $jobIdGenerationTable.*
+                FROM $jobIdGenerationTable
+                WHERE $jobIdGenerationTable.deleted = 0  
+                      AND $jobIdGenerationTable.title LIKE '%$itemName%'
+                ORDER BY id DESC
+                LIMIT 1";
+
+        return $this->db->query($sql)->getRow();
+    }
+
+    public function getItemSuggestions($s = "")
+    {
+        $purchaseOrdersTable = $this->db->dbprefix('purchase_orders');
+        $vendorsTable = $this->db->dbprefix('vendors');
+
+        $sql = "SELECT $vendorsTable.currency, $vendorsTable.country
+                FROM $vendorsTable
+                LEFT JOIN $purchaseOrdersTable ON $purchaseOrdersTable.vendor_id = $vendorsTable.id
+                WHERE $vendorsTable.deleted = 0  
+                      AND $purchaseOrdersTable.id = '$s'
+                LIMIT 1";
+
+        return $this->db->query($sql)->getRow();
+    }
+
+    public function isJobIdGenerationExists($title, $id = 0)
+    {
+        $result = $this->where('title', $title)
+                        ->where('deleted', 0)
+                        ->where('id !=', $id)
+                        ->first();
+
+        return $result ? $result : false;
+    }
 }

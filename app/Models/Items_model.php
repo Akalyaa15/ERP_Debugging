@@ -1,59 +1,71 @@
 <?php
 
-class Items_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'items';
-        parent::__construct($this->table);
-    }
+class ItemsModel extends Model
+{
+    protected $table = 'items';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'product_generation_id',
+        'stock',
+    ];
 
-    function get_details($options = array()) {
-        $items_table = $this->db->dbprefix('items');
-        $taxes_table = $this->db->dbprefix('taxes');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $itemsTable = $this->table;
+        $taxesTable = $this->db->prefixTable('taxes');
+
+        $where = [];
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $items_table.id=$id";
+            $where[] = "$itemsTable.id = $id";
         }
 
-        /*$product_id = get_array_value($options, "product_id");
-        if ($product_id) {
-            $where .= " AND $items_table.title='$product_id'";
-        }*/
-        $product_generation_id = get_array_value($options, "product_generation_id");
-        if ($product_generation_id) {
-            $where .= " AND $items_table.product_generation_id='$product_generation_id'";
+        $productGenerationId = $options['product_generation_id'] ?? null;
+        if ($productGenerationId) {
+            $where[] = "$itemsTable.product_generation_id = '$productGenerationId'";
         }
- $quantity = get_array_value($options, "quantity");
-        if ($quantity=="0") {
-            $where .= " AND $items_table.stock='$quantity'";
-        }else if($quantity=="10") {
-            $where .= " AND $items_table.stock>0 and $items_table.stock<=10";
-        }else if($quantity=="30") {
-            $where .= " AND $items_table.stock>10 and $items_table.stock<=30";
-        }else if($quantity=="50") {
-            $where .= " AND $items_table.stock>30 and $items_table.stock<=50";
-        }else if($quantity=="51") {
-            $where .= " AND $items_table.stock>='$quantity'";
-        }else if($quantity=="101") {
-            $where .= " AND $items_table.stock>='$quantity'";
+
+        $quantity = $options['quantity'] ?? null;
+        if ($quantity === "0") {
+            $where[] = "$itemsTable.stock = '$quantity'";
+        } elseif ($quantity === "10") {
+            $where[] = "$itemsTable.stock > 0 AND $itemsTable.stock <= 10";
+        } elseif ($quantity === "30") {
+            $where[] = "$itemsTable.stock > 10 AND $itemsTable.stock <= 30";
+        } elseif ($quantity === "50") {
+            $where[] = "$itemsTable.stock > 30 AND $itemsTable.stock <= 50";
+        } elseif ($quantity === "51") {
+            $where[] = "$itemsTable.stock >= '$quantity'";
+        } elseif ($quantity === "101") {
+            $where[] = "$itemsTable.stock >= '$quantity'";
         }
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        
-        WHERE $items_table.deleted=0 $where";
-        return $this->db->query($sql);
+
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $itemsTable.*
+        FROM $itemsTable
+        WHERE $itemsTable.deleted = 0
+        $whereClause";
+
+        return $this->db->query($sql)->getResult();
     }
 
-    function is_inventory_product_exists($title, $id = 0) {
-        $result = $this->get_all_where(array("title" => $title, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
+    public function isInventoryProductExists($title, $id = 0)
+    {
+        $result = $this->where('title', $title)
+                       ->where('deleted', 0)
+                       ->where('id !=', $id)
+                       ->get();
+
+        if ($result->getResult()) {
+            return $result->getRow();
         } else {
             return false;
         }
     }
-
 }

@@ -1,94 +1,107 @@
 <?php
 
-class Delivery_items_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
+class Delivery_items_model extends Model
+{
+    protected $table = 'delivery_items';
 
-    function __construct() {
-        $this->table = 'delivery_items';
-        parent::__construct($this->table);
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $delivery_items_table = $this->db->dbprefix('delivery_items');
+    public function get_details($options = [])
+    {
+        $delivery_items_table = $this->table;
         $delivery_table = $this->db->dbprefix('delivery');
-        
-        $where = "";
+
+        $builder = $this->db->table($delivery_items_table)
+                            ->select("$delivery_items_table.*")
+                            ->leftJoin($delivery_table, "$delivery_table.id = $delivery_items_table.estimate_id")
+                            ->where("$delivery_items_table.deleted", 0);
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where .= " AND $delivery_items_table.id=$id";
-        }
-        $estimate_id = get_array_value($options, "estimate_id");
-        if ($estimate_id) {
-            $where .= " AND $delivery_items_table.estimate_id=$estimate_id";
+            $builder->where("$delivery_items_table.id", $id);
         }
 
-        $sql = "SELECT $delivery_items_table.* 
-        FROM $delivery_items_table
-        LEFT JOIN $delivery_table ON $delivery_table.id=$delivery_items_table.estimate_id
-        WHERE $delivery_items_table.deleted=0 $where";
-        return $this->db->query($sql);  
+        $estimate_id = get_array_value($options, "estimate_id");
+        if ($estimate_id) {
+            $builder->where("$delivery_items_table.estimate_id", $estimate_id);
+        }
+
+        return $builder->get()->getResult();
     }
-function get_sold_details($options = array()) {
-        $delivery_items_table = $this->db->dbprefix('delivery_items');
+
+    public function get_sold_details($options = [])
+    {
+        $delivery_items_table = $this->table;
         $delivery_table = $this->db->dbprefix('delivery');
-        
-        $where = "";
+
+        $builder = $this->db->table($delivery_items_table)
+                            ->select("$delivery_items_table.sold")
+                            ->leftJoin($delivery_table, "$delivery_table.id = $delivery_items_table.estimate_id")
+                            ->where("$delivery_items_table.deleted", 0)
+                            ->where("$delivery_items_table.sold !=", 0);
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where .= " AND $delivery_items_table.id=$id";
-        }
-        $estimate_id = get_array_value($options, "estimate_id");
-        if ($estimate_id) {
-            $where .= " AND $delivery_items_table.estimate_id=$estimate_id";
+            $builder->where("$delivery_items_table.id", $id);
         }
 
-        $sql = "SELECT $delivery_items_table.sold 
-        FROM $delivery_items_table
-        LEFT JOIN $delivery_table ON $delivery_table.id=$delivery_items_table.estimate_id
-        WHERE $delivery_items_table.deleted=0 
-        AND $delivery_items_table.sold!=0 $where";
-        return $this->db->query($sql);  
+        $estimate_id = get_array_value($options, "estimate_id");
+        if ($estimate_id) {
+            $builder->where("$delivery_items_table.estimate_id", $estimate_id);
+        }
+
+        return $builder->get()->getResult();
     }
-    function get_ret_sold_details($options = array()) {
-        $delivery_items_table = $this->db->dbprefix('delivery_items');
-        $delivery_table = $this->db->dbprefix('delivery');
-        
-        $where = "";
+
+    public function get_ret_sold_details($options = [])
+    {
+        $delivery_items_table = $this->table;
+
+        $builder = $this->db->table($delivery_items_table)
+                            ->select("$delivery_items_table.sold, $delivery_items_table.ret_sold")
+                            ->where("$delivery_items_table.deleted", 0)
+                            ->where("($delivery_items_table.sold > 0 OR $delivery_items_table.ret_sold > 0)");
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where .= " AND $delivery_items_table.id=$id";
-        }
-        $estimate_id = get_array_value($options, "estimate_id");
-        if ($estimate_id) {
-            $where .= " AND $delivery_items_table.estimate_id=$estimate_id";
+            $builder->where("$delivery_items_table.id", $id);
         }
 
-        $sql = "SELECT $delivery_items_table.sold,$delivery_items_table.ret_sold 
-        FROM $delivery_items_table
-        WHERE $delivery_items_table.deleted=0 
-        AND ($delivery_items_table.sold>0 OR $delivery_items_table.ret_sold>0) $where";
-        return $this->db->query($sql);  
+        $estimate_id = get_array_value($options, "estimate_id");
+        if ($estimate_id) {
+            $builder->where("$delivery_items_table.estimate_id", $estimate_id);
+        }
+
+        return $builder->get()->getResult();
     }
-    function get_details_for_invoice($options = array()) {
-        $delivery_items_table = $this->db->dbprefix('delivery_items');
+
+    public function get_details_for_invoice($options = [])
+    {
+        $delivery_items_table = $this->table;
         $delivery_table = $this->db->dbprefix('delivery');
-        
-        $where = "";
+
+        $builder = $this->db->table($delivery_items_table)
+                            ->select("$delivery_items_table.*")
+                            ->leftJoin($delivery_table, "$delivery_table.id = $delivery_items_table.estimate_id")
+                            ->where("$delivery_items_table.deleted", 0)
+                            ->where("$delivery_items_table.sold !=", 0);
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where .= " AND $delivery_items_table.id=$id";
-        }
-        $estimate_id = get_array_value($options, "estimate_id");
-        if ($estimate_id) {
-            $where .= " AND $delivery_items_table.estimate_id=$estimate_id";
+            $builder->where("$delivery_items_table.id", $id);
         }
 
-        $sql = "SELECT $delivery_items_table.*
-        FROM $delivery_items_table
-        LEFT JOIN $delivery_table ON $delivery_table.id=$delivery_items_table.estimate_id
-        WHERE $delivery_items_table.deleted=0 
-        AND $delivery_items_table.sold!=0 $where";
-        return $this->db->query($sql);  
+        $estimate_id = get_array_value($options, "estimate_id");
+        if ($estimate_id) {
+            $builder->where("$delivery_items_table.estimate_id", $estimate_id);
+        }
+
+        return $builder->get()->getResult();
     }
 }

@@ -1,160 +1,176 @@
 <?php
 
-class Voucher_expenses_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
-
-    function __construct() {
-        $this->table = 'voucher_expenses';
-        parent::__construct($this->table);
-    }
-
-    function get_details($options = array()) {
-        $expenses_table = $this->db->dbprefix('voucher_expenses');
-        $expense_categories_table = $this->db->dbprefix('expense_categories');
-        $projects_table = $this->db->dbprefix('projects');
-        $users_table = $this->db->dbprefix('users');
-        $taxes_table = $this->db->dbprefix('taxes');
-        $clients_table = $this->db->dbprefix('clients');
-        $vendors_table = $this->db->dbprefix('vendors');
-
-
+use CodeIgniter\Model;
+class VoucherExpensesModel extends CrudModel
+{
+    protected $table = 'voucher_expenses';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'expense_date', 'amount', 'category_id', 'project_id', 'user_id', 'r_user_id',
+        'i_represent', 'r_represent', 'estimate_id', 'custom_fields', 'deleted'
+    ];
+    protected $returnType = 'object';
+    public function getDetails($options = [])
+    {
+        $expensesTable = $this->db->prefixTable('voucher_expenses');
+        $expenseCategoriesTable = $this->db->prefixTable('expense_categories');
+        $projectsTable = $this->db->prefixTable('projects');
+        $usersTable = $this->db->prefixTable('users');
+        $clientsTable = $this->db->prefixTable('clients');
+        $vendorsTable = $this->db->prefixTable('vendors');
         $where = "";
         $id = get_array_value($options, "id");
         if ($id) {
-            $where = " AND $expenses_table.id=$id";
+            $where .= " AND $expensesTable.id = " . $this->db->escape($id);
         }
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($expenses_table.expense_date BETWEEN '$start_date' AND '$end_date') ";
+        $startDate = get_array_value($options, "start_date");
+        $endDate = get_array_value($options, "end_date");
+        if ($startDate && $endDate) {
+            $where .= " AND ($expensesTable.expense_date BETWEEN " . $this->db->escape($startDate) . " AND " . $this->db->escape($endDate) . ") ";
+        }
+        $categoryId = get_array_value($options, "category_id");
+        if ($categoryId) {
+            $where .= " AND $expensesTable.category_id = " . $this->db->escape($categoryId);
+        }
+        $projectId = get_array_value($options, "project_id");
+        if ($projectId) {
+            $where .= " AND $expensesTable.project_id = " . $this->db->escape($projectId);
+        }
+        $userId = get_array_value($options, "user_id");
+        if ($userId) {
+            $where .= " AND $expensesTable.user_id = " . $this->db->escape($userId);
+        }
+        $estimateId = get_array_value($options, "estimate_id");
+        if ($estimateId) {
+            $where .= " AND $expensesTable.estimate_id = " . $this->db->escape($estimateId);
         }
 
-        $category_id = get_array_value($options, "category_id");
-        if ($category_id) {
-            $where .= " AND $expenses_table.category_id=$category_id";
-        }
+        $sql = "SELECT $expensesTable.*, 
+                CONCAT(receiver.first_name, ' ', receiver.last_name) AS receiver_name,
+                CONCAT(i_rep.first_name, ' ', i_rep.last_name) AS i_rep,
+                CONCAT(r_rep.first_name, ' ', r_rep.last_name) AS r_rep,
+                client.company_name AS client_name,
+                client.address AS client_address,
+                CONCAT(client.city, '- ', client.zip) AS client_pincode,
+                receiver_client.company_name AS receiver_client_name,
+                receiver_client.address AS receiver_client_address,
+                CONCAT(receiver_client.city, '- ', receiver_client.zip) AS receiver_client_pincode,
+                vendor.company_name AS vendor_name,
+                vendor.address AS vendor_address,
+                CONCAT(vendor.city, '- ', vendor.zip) AS vendor_pincode,
+                receiver_vendor.company_name AS receiver_vendor_name,
+                receiver_vendor.address AS receiver_vendor_address,
+                CONCAT(receiver_vendor.city, '- ', receiver_vendor.zip) AS receiver_vendor_pincode,
+                $expenseCategoriesTable.title AS category_title,
+                CONCAT($usersTable.first_name, ' ', $usersTable.last_name) AS linked_user_name,
+                CONCAT($usersTable.employee_id) AS employee_id,
+                CONCAT($usersTable.job_title) AS job_title,
+                CONCAT(receiver.first_name, ' ', receiver.last_name) AS r_linked_user_name,
+                CONCAT(receiver.employee_id) AS r_employee_id,
+                CONCAT(receiver.job_title) AS r_job_title,
+                $projectsTable.title AS project_title
+                FROM $expensesTable
+                LEFT JOIN $expenseCategoriesTable ON $expenseCategoriesTable.id = $expensesTable.category_id
+                LEFT JOIN $projectsTable ON $projectsTable.id = $expensesTable.project_id
+                LEFT JOIN $usersTable ON $usersTable.id = $expensesTable.user_id
+                LEFT JOIN $usersTable AS receiver ON receiver.id = $expensesTable.r_user_id
+                LEFT JOIN $usersTable AS i_rep ON i_rep.id = $expensesTable.i_represent
+                LEFT JOIN $usersTable AS r_rep ON r_rep.id = $expensesTable.r_represent
+                LEFT JOIN $clientsTable AS client ON client.id = $expensesTable.user_id
+                LEFT JOIN $clientsTable AS receiver_client ON receiver_client.id = $expensesTable.r_user_id
+                LEFT JOIN $vendorsTable AS vendor ON vendor.id = $expensesTable.user_id
+                LEFT JOIN $vendorsTable AS receiver_vendor ON receiver_vendor.id = $expensesTable.r_user_id
+                WHERE $expensesTable.deleted = 0 $where";
 
-        $project_id = get_array_value($options, "project_id");
-        if ($project_id) {
-            $where .= " AND $expenses_table.project_id=$project_id";
-        }
-
-        $user_id = get_array_value($options, "user_id");
-        if ($user_id) {
-            $where .= " AND $expenses_table.user_id=$user_id";
-        }
-        $estimate_id = get_array_value($options, "estimate_id");
-if ($estimate_id) {
-            $where .= " AND $expenses_table.estimate_id=$estimate_id";
-        }
-        //prepare custom fild binding query
-        $custom_fields = get_array_value($options, "custom_fields");
-        $custom_field_query_info = $this->prepare_custom_field_query_string("expenses", $custom_fields, $expenses_table);
-        $select_custom_fields = get_array_value($custom_field_query_info, "select_string");
-        $join_custom_fields = get_array_value($custom_field_query_info, "join_string");
-
-
-        $sql = "SELECT $expenses_table.*,CONCAT(receiver.first_name, ' ', receiver.last_name)AS receiver_name,CONCAT(i_rep.first_name, ' ', i_rep.last_name)AS i_rep,CONCAT(r_rep.first_name, ' ', r_rep.last_name)AS r_rep,client.company_name AS client_name,client.address AS client_address,CONCAT(client.city, '- ', client.zip)AS client_pincode,receiver_client.company_name AS receiver_client_name,receiver_client.address AS receiver_client_address,CONCAT(receiver_client.city, '- ', receiver_client.zip)AS receiver_client_pincode,vendor.company_name AS vendor_name,vendor.address AS vendor_address,CONCAT(vendor.city, '- ', vendor.zip)AS vendor_pincode,receiver_vendor.company_name AS receiver_vendor_name,receiver_vendor.address AS receiver_vendor_address,CONCAT(receiver_vendor.city, '- ', receiver_vendor.zip)AS receiver_vendor_pincode, $expense_categories_table.title as category_title, 
-                 CONCAT($users_table.first_name, ' ', $users_table.last_name) AS linked_user_name,CONCAT($users_table.employee_id) AS employee_id,CONCAT($users_table.job_title) AS job_title,CONCAT(receiver.first_name, ' ', receiver.last_name) AS r_linked_user_name,CONCAT(receiver.employee_id) AS r_employee_id,CONCAT(receiver.job_title) AS r_job_title,
-                 $projects_table.title AS project_title
-        FROM $expenses_table
-        LEFT JOIN $expense_categories_table ON $expense_categories_table.id= $expenses_table.category_id
-        LEFT JOIN $projects_table ON $projects_table.id= $expenses_table.project_id
-        LEFT JOIN $users_table ON $users_table.id= $expenses_table.user_id
-        LEFT JOIN $users_table as receiver  ON receiver.id= $expenses_table.r_user_id
-        LEFT JOIN $users_table as i_rep  ON i_rep.id= $expenses_table.i_represent
-         LEFT JOIN $users_table as r_rep  ON r_rep.id= $expenses_table.r_represent
-        LEFT JOIN $clients_table as client  ON client.id= $expenses_table.user_id
-        LEFT JOIN $clients_table as receiver_client  ON receiver_client.id= $expenses_table.r_user_id
-        LEFT JOIN $vendors_table as vendor  ON vendor.id= $expenses_table.user_id
-        LEFT JOIN $vendors_table as receiver_vendor  ON receiver_vendor.id= $expenses_table.r_user_id
-        WHERE $expenses_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return $this->db->query($sql)->getResult();
     }
 
-    function get_income_expenses_info() {
-        $expenses_table = $this->db->dbprefix('expenses');
-        $invoice_payments_table = $this->db->dbprefix('invoice_payments');
-        $taxes_table = $this->db->dbprefix('taxes');
-        $info = new stdClass();
+    public function getIncomeExpensesInfo()
+    {
+        $expensesTable = $this->db->prefixTable('expenses');
+        $invoicePaymentsTable = $this->db->prefixTable('invoice_payments');
+        $taxesTable = $this->db->prefixTable('taxes');
 
-        $sql1 = "SELECT SUM($invoice_payments_table.amount) as total_income
-        FROM $invoice_payments_table
-        WHERE $invoice_payments_table.deleted=0";
-        $income = $this->db->query($sql1)->row();
+        $info = new \stdClass();
 
-        $sql2 = "SELECT SUM($expenses_table.amount + IFNULL(tax_table.percentage,0)/100*IFNULL($expenses_table.amount,0) + IFNULL(tax_table2.percentage,0)/100*IFNULL($expenses_table.amount,0)) AS total_expenses
-        FROM $expenses_table
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table ON tax_table.id = $expenses_table.tax_id
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table2 ON tax_table2.id = $expenses_table.tax_id2
-        WHERE $expenses_table.deleted=0";
-        $expenses = $this->db->query($sql2)->row();
+        $sql1 = "SELECT SUM($invoicePaymentsTable.amount) AS total_income
+                FROM $invoicePaymentsTable
+                WHERE $invoicePaymentsTable.deleted = 0";
+        $income = $this->db->query($sql1)->getRow();
 
-        $info->income = $income->total_income;
-        $info->expneses = $expenses->total_expenses;
+        $sql2 = "SELECT SUM($expensesTable.amount 
+                        + IFNULL(tax_table.percentage,0)/100 * IFNULL($expensesTable.amount,0) 
+                        + IFNULL(tax_table2.percentage,0)/100 * IFNULL($expensesTable.amount,0)) AS total_expenses
+                FROM $expensesTable
+                LEFT JOIN (SELECT $taxesTable.id, $taxesTable.percentage FROM $taxesTable) AS tax_table 
+                        ON tax_table.id = $expensesTable.tax_id
+                LEFT JOIN (SELECT $taxesTable.id, $taxesTable.percentage FROM $taxesTable) AS tax_table2 
+                        ON tax_table2.id = $expensesTable.tax_id2
+                WHERE $expensesTable.deleted = 0";
+        $expenses = $this->db->query($sql2)->getRow();
+
+        $info->income = $income->total_income ?? 0;
+        $info->expenses = $expenses->total_expenses ?? 0;
+
         return $info;
     }
 
-    function get_yearly_expenses_chart($year) {
-        $expenses_table = $this->db->dbprefix('expenses');
-        $taxes_table = $this->db->dbprefix('taxes');
+    public function getYearlyExpensesChart($year)
+    {
+        $expensesTable = $this->db->prefixTable('expenses');
+        $taxesTable = $this->db->prefixTable('taxes');
 
-        $expenses = "SELECT SUM($expenses_table.amount + IFNULL(tax_table.percentage,0)/100*IFNULL($expenses_table.amount,0) + IFNULL(tax_table2.percentage,0)/100*IFNULL($expenses_table.amount,0)) AS total, MONTH($expenses_table.expense_date) AS month
-        FROM $expenses_table
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table ON tax_table.id = $expenses_table.tax_id
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table2 ON tax_table2.id = $expenses_table.tax_id2
-        WHERE $expenses_table.deleted=0 AND YEAR($expenses_table.expense_date)= $year
-        GROUP BY MONTH($expenses_table.expense_date)";
+        $sql = "SELECT SUM($expensesTable.amount 
+                        + IFNULL(tax_table.percentage,0)/100 * IFNULL($expensesTable.amount,0) 
+                        + IFNULL(tax_table2.percentage,0)/100 * IFNULL($expensesTable.amount,0)) AS total, 
+                MONTH($expensesTable.expense_date) AS month
+                FROM $expensesTable
+                LEFT JOIN (SELECT $taxesTable.id, $taxesTable.percentage FROM $taxesTable) AS tax_table 
+                        ON tax_table.id = $expensesTable.tax_id
+                LEFT JOIN (SELECT $taxesTable.id, $taxesTable.percentage FROM $taxesTable) AS tax_table2 
+                        ON tax_table2.id = $expensesTable.tax_id2
+                WHERE $expensesTable.deleted = 0 AND YEAR($expensesTable.expense_date) = $year
+                GROUP BY MONTH($expensesTable.expense_date)";
 
-        return $this->db->query($expenses)->result();
+        return $this->db->query($sql)->getResult();
     }
-function get_voucher_expense_details($item_name = "") {
 
-        $items_table = $this->db->dbprefix('voucher_expenses');
-        
+    public function getVoucherExpenseDetails($itemName = "")
+    {
+        $itemsTable = $this->db->prefixTable('voucher_expenses');
 
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        WHERE $items_table.deleted=0  AND $items_table.estimate_id = '$item_name'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
+        $sql = "SELECT $itemsTable.*
+                FROM $itemsTable
+                WHERE $itemsTable.deleted = 0 AND $itemsTable.estimate_id = " . $this->db->escape($itemName) . "
+                ORDER BY id DESC
+                LIMIT 1";
 
-        if ($result->num_rows()) {
-            return $result->row();
-        }
-
+        return $this->db->query($sql)->getRow();
     }
-    function get_voucher_id($item_name = "") {
 
-        $items_table = $this->db->dbprefix('voucher_expenses');
-        
+    public function getVoucherId($itemName = "")
+    {
+        $itemsTable = $this->db->prefixTable('voucher_expenses');
 
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        WHERE $items_table.deleted=0  AND $items_table.user_id = '$item_name'
-        ORDER BY id
-        ";
-        
-       return $this->db->query($sql)->result();
+        $sql = "SELECT $itemsTable.*
+                FROM $itemsTable
+                WHERE $itemsTable.deleted = 0 AND $itemsTable.user_id = " . $this->db->escape($itemName) . "
+                ORDER BY id";
 
-
+        return $this->db->query($sql)->getResult();
     }
-    function get_voucher_id_for_others($item_name = "") {
 
-        $items_table = $this->db->dbprefix('voucher_expenses');
-        
+    public function getVoucherIdForOthers($itemName = "")
+    {
+        $itemsTable = $this->db->prefixTable('voucher_expenses');
 
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        WHERE $items_table.deleted=0  AND $items_table.phone = '$item_name'
-        ORDER BY id
-        ";
-        
-       return $this->db->query($sql)->result();
+        $sql = "SELECT $itemsTable.*
+                FROM $itemsTable
+                WHERE $itemsTable.deleted = 0 AND $itemsTable.phone = " . $this->db->escape($itemName) . "
+                ORDER BY id";
 
-
+        return $this->db->query($sql)->getResult();
     }
 }

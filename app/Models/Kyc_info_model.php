@@ -1,32 +1,41 @@
 <?php
 
-class Kyc_info_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'kyc_info';
-        parent::__construct($this->table);
+class KycInfoModel extends Model
+{
+    protected $table = 'kyc_info';
+    protected $primaryKey = 'id';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $kyc_info_table = $this->db->dbprefix('kyc_info');
+    public function getDetails($options = [])
+    {
+        $kycInfoTable = $this->table;
+        $where = [];
 
-        $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $kyc_info_table.id=$id";
+            $where[] = "$kycInfoTable.id = $id";
         }
 
-         $user_id = get_array_value($options, "user_id");
-        if ($user_id) {
-            $where = " AND $kyc_info_table.user_id=$user_id";
+        $userId = $options['user_id'] ?? null;
+        if ($userId) {
+            $where[] = "$kycInfoTable.user_id = $userId";
         }
 
-        $sql = "SELECT $kyc_info_table.*
-        FROM $kyc_info_table
-        WHERE $kyc_info_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $kycInfoTable.*
+                FROM $kycInfoTable
+                WHERE $kycInfoTable.deleted = 0
+                $whereClause";
+
+        return $this->db->query($sql)->getResult();
     }
-
 }

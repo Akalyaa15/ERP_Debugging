@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 use CodeIgniter\Model;
+
 class HelpArticlesModel extends Model {
     protected $table = 'help_articles';
     protected $primaryKey = 'id';

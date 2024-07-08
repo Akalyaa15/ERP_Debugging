@@ -8,7 +8,7 @@ class Company_groups_model extends Model
 {
     protected $table = 'company_groups';
     protected $primaryKey = 'id';
-    protected $useSoftDeletes = true; 
+    protected $useSoftDeletes = true;
 
     public function get_details($options = [])
     {

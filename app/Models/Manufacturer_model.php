@@ -1,59 +1,39 @@
 <?php
 
-class Manufacturer_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'manufacturer';
-        parent::__construct($this->table);
-    }
+class ManufacturerModel extends Model
+{
+    protected $table = 'manufacturer';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['title', 'description', 'created_at', 'deleted'];
+    protected $returnType = 'array';
 
-    function get_details($options = array()) {
-        $earnings_table = $this->db->dbprefix('manufacturer');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->builder();
+        $builder->select('*');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $earnings_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $earnings_table.*
-        FROM $earnings_table
-        WHERE $earnings_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0);
+        $query = $builder->get();
+        return $query->getResultArray();
     }
 
+    public function isManufacturerListExists($title, $id = 0)
+    {
+        $result = $this->where('title', $title)
+                       ->where('deleted', 0)
+                       ->where('id !=', $id)
+                       ->findAll();
 
-    function is_manufacturer_list_exists($title, $id = 0) {
-        $result = $this->get_all_where(array("title" => $title, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
-        } else {
-            return false;
-        }
-    } 
-
-    /*function get_account_number_suggestions($id) {
-        $projects_table = $this->db->dbprefix('bank_list');
-        $sql = "SELECT GROUP_CONCAT(account_number) as account_number_groups
-        FROM $projects_table
-        WHERE $projects_table.deleted=0 AND $projects_table.id = $id ";
-        return $this->db->query($sql)->row()->account_number_groups;
+        return count($result) > 0 ? $result[0] : false;
     }
-
-    function get_item_account_number_suggestions($keywords = "",$bank_id="") {
-        
-        $items_table = $this->db->dbprefix('bank_list');
-       
-        
-
-        $sql = "SELECT $items_table.account_number
-        FROM $items_table
-        
-        WHERE $items_table.deleted=0 AND $items_table.id = '$bank_id'   AND $items_table.account_number LIKE '%$keyword%'  
-        LIMIT 500 
-        ";
-        return $this->db->query($sql)->row();
-     }*/
-
 }

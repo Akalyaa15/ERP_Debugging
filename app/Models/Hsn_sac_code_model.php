@@ -22,8 +22,7 @@ public function getDetails($options = []) {
                     ->limit(30)
                     ->findAll();
     }
-
-    public function getItemInfoSuggestion($item_name = "") {
+   public function getItemInfoSuggestion($item_name = "") {
         return $this->like('hsn_code', $item_name)
                     ->where('deleted', 0)
                     ->orderBy('id', 'DESC')
@@ -43,7 +42,6 @@ public function getDetails($options = []) {
                     ->limit(30)
                     ->findAll();
     }
-
     public function isHsnCodeExists($hsn_code, $id = 0) {
         $result = $this->where(['hsn_code' => $hsn_code, 'deleted' => 0])
                        ->findAll();

@@ -8,8 +8,6 @@ class Clients_wo_payments_list_model extends Model
 {
     protected $table = 'clients_wo_payments_list';
     protected $primaryKey = 'id';
-    protected $allowedFields = []; // Define your allowed fields here
-
     public function get_details($options = [])
     {
         $checklist_items_table = $this->table;

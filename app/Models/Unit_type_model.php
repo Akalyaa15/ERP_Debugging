@@ -1,30 +1,29 @@
 <?php
 
-class Unit_type_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'unit_type';
-        parent::__construct($this->table);
-    }
+class UnitTypeModel extends Model
+{
+    protected $table = 'unit_type';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['title', 'description', 'created_at', 'deleted'];
+    protected $returnType = 'array';
 
-    function get_details($options = array()) {
-        $unit_type_table = $this->db->dbprefix('unit_type');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $builder = $this->builder();
+        $builder->select('*');
+
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $unit_type_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $unit_type_table.*
-        FROM $unit_type_table
-        WHERE $unit_type_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0);
+        $query = $builder->get();
+        return $query->getResultArray();
     }
-
-    
-    
-
-
 }

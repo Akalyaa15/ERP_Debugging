@@ -1,27 +1,29 @@
 <?php
 
-class Leave_types_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'leave_types';
-        parent::__construct($this->table);
-    }
+class LeaveTypesModel extends Model
+{
+    protected $table = 'leave_types';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = ['title', 'description', 'created_at', 'deleted'];
+    protected $returnType = 'array';
 
-    function get_details($options = array()) {
-        $leave_types_table = $this->db->dbprefix('leave_types');
+    public function getDetails($options = [])
+    {
+        $builder = $this->builder();
+        $builder->select('*');
 
-        $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $leave_types_table.id=$id";
+            $builder->where('id', $id);
         }
 
-        $sql = "SELECT $leave_types_table.*
-        FROM $leave_types_table
-        WHERE $leave_types_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $builder->where('deleted', 0);
+        $query = $builder->get();
+        return $query->getResultArray();
     }
-
 }

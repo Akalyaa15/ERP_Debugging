@@ -1,56 +1,57 @@
 <?php
 
-class Payslip_earnings_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'payslip_earnings';
-        parent::__construct($this->table);
+class Payslip_earnings_model extends Crud_model
+{
+    protected $table = 'payslip_earnings';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+    protected $useSoftDeletes = true;
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $payslip_earnings_table = $this->db->dbprefix('payslip_earnings');
-        $payslip_table = $this->db->dbprefix('payslip');
-        $users_table = $this->db->dbprefix('users');
-        $team_member_job_info_table = $this->db->dbprefix('team_member_job_info');
-        $earnings_table = $this->db->dbprefix('earnings');
+    public function get_details($options = [])
+    {
+        $payslip_earnings_table = $this->table;
+        $payslip_table = 'payslip'; // adjust table names as per your database
+        $users_table = 'users';
+        $team_member_job_info_table = 'team_member_job_info';
 
         $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
+        $user_id = $options['user_id'] ?? null;
+        $payslip_id = $options['payslip_id'] ?? null;
+
         if ($id) {
             $where .= " AND $payslip_earnings_table.id=$id";
         }
 
-        $user_id = get_array_value($options, "user_id");
         if ($user_id) {
             $where .= " AND $payslip_earnings_table.user_id=$user_id";
         }
 
-
-        $payslip_id = get_array_value($options, "payslip_id");
         if ($payslip_id) {
             $where .= " AND $payslip_earnings_table.payslip_id=$payslip_id";
         }
 
-        $sql = "SELECT $payslip_earnings_table.*,CONCAT($users_table.first_name, ' ', $users_table.last_name) AS user_name,$team_member_job_info_table.salary AS linked_user_name ,$payslip_table.salary AS payslip_salary, $users_table.id AS payslip_user_id
-        FROM $payslip_earnings_table
-        LEFT JOIN $users_table ON $users_table.id= $payslip_earnings_table.user_id
-        LEFT JOIN $payslip_table ON $payslip_table.id=$payslip_earnings_table.payslip_id
-        
-        LEFT JOIN $team_member_job_info_table ON $team_member_job_info_table.user_id=$payslip_earnings_table.user_id
-        WHERE $payslip_earnings_table.deleted=0 $where";
-        return $this->db->query($sql);  
+        $sql = "SELECT $payslip_earnings_table.*, CONCAT($users_table.first_name, ' ', $users_table.last_name) AS user_name, $team_member_job_info_table.salary AS linked_user_name, $payslip_table.salary AS payslip_salary, $users_table.id AS payslip_user_id
+                FROM $payslip_earnings_table
+                LEFT JOIN $users_table ON $users_table.id = $payslip_earnings_table.user_id
+                LEFT JOIN $payslip_table ON $payslip_table.id = $payslip_earnings_table.payslip_id
+                LEFT JOIN $team_member_job_info_table ON $team_member_job_info_table.user_id = $payslip_earnings_table.user_id
+                WHERE $payslip_earnings_table.deleted=0 $where";
+
+        return $this->db->query($sql)->getResult();
     }
 
-
-//insert the payslip earnings  table auto payslip generate 
-    function insert($datas)
+    public function insert($data)
     {
-    $this->db->insert_batch('payslip_earnings', $datas);
-    } 
-
-
-  
-
+        $this->db->table('payslip_earnings')->insertBatch($data);
+    }
 }

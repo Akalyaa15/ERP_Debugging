@@ -1,24 +1,36 @@
 <?php
-class Leads_model extends Crud_model {
-    private $table = null;
 
-    function __construct() {
-        $this->table = 'leads';
-        parent::__construct($this->table);
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class LeadsModel extends Model
+{
+    protected $table = 'leads';
+    protected $primaryKey = 'id';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $leads_table = $this->db->dbprefix('leads');
+    public function getDetails($options = [])
+    {
+        $leadsTable = $this->table;
+        $where = [];
 
-        $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where = " AND $leads_table.id=$id";
+            $where[] = "$leadsTable.id = $id";
         }
 
-        $sql = "SELECT $leads_table.*
-                FROM $leads_table       
-        WHERE $leads_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $leadsTable.*
+                FROM $leadsTable
+                WHERE $leadsTable.deleted = 0
+                $whereClause";
+
+        return $this->db->query($sql)->getResult();
     }
 }

@@ -8,8 +8,7 @@ class Estimates_model extends Crud_model {
         $this->table = 'estimates';
         parent::__construct($this->table);
     }
-
-    function get_details($options = array()) {
+   function get_details($options = array()) {
         $estimates_table = $this->db->dbprefix('estimates');
         $clients_table = $this->db->dbprefix('clients');
         $taxes_table = $this->db->dbprefix('taxes');

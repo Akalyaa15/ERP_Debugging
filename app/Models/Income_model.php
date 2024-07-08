@@ -89,15 +89,6 @@ class Income_model extends Crud_model {
         FROM $invoice_payments_table
         WHERE $invoice_payments_table.deleted=0";
         $income = $this->db->query($sql1)->row();
-
-
-
-        /*$sql2 = "SELECT SUM($expenses_table.amount + IFNULL(tax_table.percentage,0)/100*IFNULL($expenses_table.amount,0) + IFNULL(tax_table2.percentage,0)/100*IFNULL($expenses_table.amount,0)) AS total_expenses
-        FROM $expenses_table
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table ON tax_table.id = $expenses_table.tax_id
-        LEFT JOIN (SELECT $taxes_table.id, $taxes_table.percentage FROM $taxes_table) AS tax_table2 ON tax_table2.id = $expenses_table.tax_id2
-        WHERE $expenses_table.deleted=0";
-        $expenses = $this->db->query($sql2)->row(); */
         $sql2 = "SELECT SUM($expenses_table.total) AS total_expenses
         FROM $expenses_table
         

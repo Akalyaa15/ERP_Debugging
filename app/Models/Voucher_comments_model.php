@@ -1,44 +1,46 @@
 <?php
 
-class Voucher_comments_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'voucher_comments';
-        parent::__construct($this->table);
-    }
+class VoucherCommentsModel extends CrudModel
+{
+    protected $table = 'voucher_comments';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'voucher_id', 'comment', 'created_by', 'created_at', 'deleted'
+    ];
+    protected $returnType = 'object';
+    public function getDetails($options = [])
+    {
+        $voucherCommentsTable = $this->db->prefixTable('voucher_comments');
+        $usersTable = $this->db->prefixTable('users');
 
-    function get_details($options = array()) {
-        $voucher_comments_table = $this->db->dbprefix('voucher_comments');
-        $users_table = $this->db->dbprefix('users');
         $where = "";
-        $sort= "ASC";
-        
+        $sort = "ASC";
+
         $id = get_array_value($options, "id");
         if ($id) {
-            $where .= " AND $voucher_comments_table.id=$id";
+            $where .= " AND $voucherCommentsTable.id = " . $this->db->escape($id);
         }
 
-        $ticket_id = get_array_value($options, "voucher_id");
-        if ($ticket_id) {
-            $where .= " AND $voucher_comments_table.voucher_id=$ticket_id";
+        $voucherId = get_array_value($options, "voucher_id");
+        if ($voucherId) {
+            $where .= " AND $voucherCommentsTable.voucher_id = " . $this->db->escape($voucherId);
         }
-        
-        $sort_decending = get_array_value($options, "sort_as_decending");
-        if ($sort_decending) {
+
+        $sortDescending = get_array_value($options, "sort_as_decending");
+        if ($sortDescending) {
             $sort = "DESC";
         }
 
+        $sql = "SELECT $voucherCommentsTable.*, CONCAT($usersTable.first_name, ' ', $usersTable.last_name) AS created_by_user, $usersTable.image AS created_by_avatar, $usersTable.user_type
+                FROM $voucherCommentsTable
+                LEFT JOIN $usersTable ON $usersTable.id = $voucherCommentsTable.created_by
+                WHERE $voucherCommentsTable.deleted = 0 $where
+                ORDER BY $voucherCommentsTable.created_at $sort";
 
-
-        $sql = "SELECT $voucher_comments_table.*, CONCAT($users_table.first_name, ' ',$users_table.last_name) AS created_by_user, $users_table.image as created_by_avatar, $users_table.user_type
-        FROM $voucher_comments_table
-        LEFT JOIN $users_table ON $users_table.id= $voucher_comments_table.created_by
-        WHERE $voucher_comments_table.deleted=0 $where
-        ORDER BY $voucher_comments_table.created_at $sort";
-
-        return $this->db->query($sql);
+        return $this->db->query($sql)->getResult();
     }
-
 }

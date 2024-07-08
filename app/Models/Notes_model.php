@@ -4,12 +4,12 @@ class Notes_model extends Crud_model {
 
     private $table = null;
 
-    function __construct() {
+    public function __construct() {
         $this->table = 'notes';
         parent::__construct($this->table);
     }
 
-    function get_details($options = array()) {
+    public function get_details($options = []) {
         $notes_table = $this->db->dbprefix('notes');
 
         $where = "";
@@ -59,7 +59,7 @@ class Notes_model extends Crud_model {
         return $this->db->query($sql);
     }
 
-    function get_label_suggestions($user_id) {
+    public function get_label_suggestions($user_id) {
         $notes_table = $this->db->dbprefix('notes');
         $sql = "SELECT GROUP_CONCAT(labels) as label_groups
         FROM $notes_table

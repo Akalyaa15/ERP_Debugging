@@ -1,33 +1,43 @@
 <?php
 
-class Payslip_deductions_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'payslip_deductions';
-        parent::__construct($this->table);
+class Payslip_deductions_model extends Crud_model
+{
+    protected $table = 'payslip_deductions';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+    protected $useSoftDeletes = true;
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $payslip_deductions_table = $this->db->dbprefix('payslip_deductions');
-        $payslip_table = $this->db->dbprefix('payslip');
-        
+    public function get_details($options = [])
+    {
+        $payslip_deductions_table = $this->table;
+        $payslip_table = 'payslip';
+
         $where = "";
-        $id = get_array_value($options, "id");
+        $id = $options['id'] ?? null;
+        $payslip_id = $options['payslip_id'] ?? null;
+
         if ($id) {
             $where .= " AND $payslip_deductions_table.id=$id";
         }
-        $payslip_id = get_array_value($options, "payslip_id");
+
         if ($payslip_id) {
             $where .= " AND $payslip_deductions_table.payslip_id=$payslip_id";
         }
 
         $sql = "SELECT $payslip_deductions_table.*
-        FROM $payslip_deductions_table
-        LEFT JOIN $payslip_table ON $payslip_table.id=$payslip_deductions_table.payslip_id
-        WHERE $payslip_deductions_table.deleted=0 $where";
-        return $this->db->query($sql);  
-    }
+                FROM $payslip_deductions_table
+                LEFT JOIN $payslip_table ON $payslip_table.id=$payslip_deductions_table.payslip_id
+                WHERE $payslip_deductions_table.deleted=0 $where";
 
-  }
+        return $this->db->query($sql)->getResult();
+    }
+}

@@ -1,10 +1,7 @@
 <?php
-
 namespace App\Models;
-
 use CodeIgniter\Model;
 use stdClass;
-
 class ActivityLogsModel extends Model
 {
     protected $table = 'activity_logs';
@@ -13,11 +10,9 @@ class ActivityLogsModel extends Model
     protected $allowedFields = [
         'log_for', 'log_for_id', 'log_type', 'log_type_id', 'created_by', 'created_at'
     ];
-    protected $useTimestamps = false; // We are manually handling timestamps
-
+    protected $useTimestamps = false;
     public function saveLog($data)
-    {
-        $data["created_at"] = $this->getCurrentUTCTime();
+    {   $data["created_at"] = $this->getCurrentUTCTime();
         $data["created_by"] = session()->get('login_user')->id;
         $this->insert($data);
         return $this->insertID();
@@ -28,8 +23,7 @@ class ActivityLogsModel extends Model
             return $this->where($where)->delete();
         }
     }
-
-    public function getDetails($options = [])
+   public function getDetails($options = [])
     {
         $activity_logs_table = $this->db->prefixTable('activity_logs');
         $project_members_table = $this->db->prefixTable('project_members');
@@ -52,7 +46,6 @@ class ActivityLogsModel extends Model
                 $extraSelect = " , $link_with_table.title as log_for_title";
             }
         }
-
         if (!empty($options['log_type']) && !empty($options['log_type_id'])) {
             $where["$activity_logs_table.log_type"] = $options['log_type'];
             $where["$activity_logs_table.log_type_id"] = $options['log_type_id'];
@@ -80,7 +73,6 @@ class ActivityLogsModel extends Model
         $data->found_rows = $this->db->query("SELECT FOUND_ROWS() as found_rows")->getRow()->found_rows;
         return $data;
     }
-
     public function getOne($id = 0)
     {
         return $this->getOneWhere(['id' => $id]);

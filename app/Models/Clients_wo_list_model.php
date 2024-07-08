@@ -8,7 +8,7 @@ class Clients_wo_list_model extends Model
 {
     protected $table = 'clients_wo_list';
     protected $primaryKey = 'id';
-    protected $allowedFields = []; // Define your allowed fields here
+    protected $allowedFields = [];
 
     public function get_details($options = [])
     {

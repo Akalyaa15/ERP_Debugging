@@ -1,65 +1,78 @@
 <?php
 
-class Invoice_items_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'invoice_items';
-        parent::__construct($this->table);
-    }
+class InvoiceItemsModel extends Model
+{
+    protected $table = 'invoice_items';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'invoice_id',
+        'title',
+        'description',
+        'quantity',
+        'rate',
+        'total',
+        'tax',
+        'sort',
+    ];
 
-    function get_details($options = array()) {
-        $invoice_items_table = $this->db->dbprefix('invoice_items');
-        $invoices_table = $this->db->dbprefix('invoices');
-        $clients_table = $this->db->dbprefix('clients');
-        $where = "";
-        $id = get_array_value($options, "id");
+    public function getDetails($options = [])
+    {
+        $invoiceItemsTable = $this->table;
+        $invoicesTable = $this->db->prefixTable('invoices');
+        $clientsTable = $this->db->prefixTable('clients');
+        $where = [];
+        $id = $options['id'] ?? null;
         if ($id) {
-            $where .= " AND $invoice_items_table.id=$id";
+            $where[] = "$invoiceItemsTable.id = $id";
         }
-        $invoice_id = get_array_value($options, "invoice_id");
-        if ($invoice_id) {
-            $where .= " AND $invoice_items_table.invoice_id=$invoice_id";
-        }
-
-        $sql = "SELECT $invoice_items_table.*, (SELECT $clients_table.currency_symbol FROM $clients_table WHERE $clients_table.id=$invoices_table.client_id limit 1) AS currency_symbol
-        FROM $invoice_items_table
-        LEFT JOIN $invoices_table ON $invoices_table.id=$invoice_items_table.invoice_id
-        WHERE $invoice_items_table.deleted=0 $where
-        ORDER BY $invoice_items_table.sort ASC";
-        return $this->db->query($sql);
-    }
-
-    function get_item_suggestion($keyword = "") {
-        $items_table = $this->db->dbprefix('items');
-        
-
-        $sql = "SELECT $items_table.title
-        FROM $items_table
-        WHERE $items_table.deleted=0  AND $items_table.title LIKE '%$keyword%'
-        LIMIT 10 
-        ";
-        return $this->db->query($sql)->result();
-    }
-
-    function get_item_info_suggestion($item_name = "") {
-
-        $items_table = $this->db->dbprefix('items');
-        
-
-        $sql = "SELECT $items_table.*
-        FROM $items_table
-        WHERE $items_table.deleted=0  AND $items_table.title LIKE '%$item_name%'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
-
-        if ($result->num_rows()) {
-            return $result->row();
+        $invoiceId = $options['invoice_id'] ?? null;
+        if ($invoiceId) {
+            $where[] = "$invoiceItemsTable.invoice_id = $invoiceId";
         }
 
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT $invoiceItemsTable.*, 
+                       (SELECT $clientsTable.currency_symbol 
+                        FROM $clientsTable 
+                        WHERE $clientsTable.id = $invoicesTable.client_id 
+                        LIMIT 1) AS currency_symbol
+                FROM $invoiceItemsTable
+                LEFT JOIN $invoicesTable ON $invoicesTable.id = $invoiceItemsTable.invoice_id
+                $whereClause
+                ORDER BY $invoiceItemsTable.sort ASC";
+
+        return $this->db->query($sql)->getResult();
     }
 
+    public function getItemSuggestion($keyword = "")
+    {
+        $itemsTable = $this->db->prefixTable('items');
+
+        $sql = "SELECT title
+                FROM $itemsTable
+                WHERE deleted = 0 AND title LIKE '%$keyword%'
+                LIMIT 10";
+
+        return $this->db->query($sql)->getResult();
+    }
+
+    public function getItemInfoSuggestion($itemName = "")
+    {
+        $itemsTable = $this->db->prefixTable('items');
+
+        $sql = "SELECT *
+                FROM $itemsTable
+                WHERE deleted = 0 AND title LIKE '%$itemName%'
+                ORDER BY id DESC
+                LIMIT 1";
+
+        $result = $this->db->query($sql);
+
+        return $result->getRow();
+    }
 }

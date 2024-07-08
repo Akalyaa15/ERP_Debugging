@@ -1,94 +1,108 @@
 <?php
 
-class Part_no_generation_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'part_no_generation';
-        parent::__construct($this->table);
+class Part_no_generation_model extends Model
+{
+    protected $table = 'part_no_generation';
+    protected $primaryKey = 'id';
+    protected $returnType = 'object';
+
+    public function __construct()
+    {
+        parent::__construct();
     }
 
-    function get_details($options = array()) {
-        $part_no_generation_table = $this->db->dbprefix('part_no_generation');
-        $vendors_table = $this->db->dbprefix('vendors');
-        //$part_no_generation_table$taxes_table = $this->db->dbprefix('taxes');
+    public function get_details($options = [])
+    {
+        $part_no_generation_table = $this->table;
+        $vendors_table = 'vendors';
         $where = "";
-        $id = get_array_value($options, "id");
+
+        $id = $options['id'] ?? null;
         if ($id) {
             $where .= " AND $part_no_generation_table.id=$id";
         }
-       $part_no = get_array_value($options, "part_no");
+
+        $part_no = $options['part_no'] ?? null;
         if ($part_no) {
             $where .= " AND $part_no_generation_table.title='$part_no'";
         }
-        
-        $group_id = get_array_value($options, "group_id");
+
+        $group_id = $options['group_id'] ?? null;
         if ($group_id) {
-            $where = " AND FIND_IN_SET('$group_id', 
-            $part_no_generation_table.vendor_id)";
+            $where .= " AND FIND_IN_SET('$group_id', $part_no_generation_table.vendor_id)";
         }
 
-        $sql = "SELECT $part_no_generation_table.*,(SELECT  GROUP_CONCAT($vendors_table.id) FROM $vendors_table WHERE FIND_IN_SET($vendors_table.id, 
-        $part_no_generation_table.vendor_id)) AS groups
-        FROM $part_no_generation_table
-        
-        WHERE $part_no_generation_table.deleted=0 $where";
-        return $this->db->query($sql);
+        $sql = "SELECT $part_no_generation_table.*, 
+                (SELECT GROUP_CONCAT($vendors_table.id) 
+                 FROM $vendors_table 
+                 WHERE FIND_IN_SET($vendors_table.id, $part_no_generation_table.vendor_id)) AS groups
+                FROM $part_no_generation_table
+                WHERE $part_no_generation_table.deleted=0 $where";
+
+        return $this->db->query($sql)->getResult();
     }
 
-    function get_part_no_suggestion($keyword = "",$d_item="") {
-        $part_no_generation_table = $this->db->dbprefix('part_no_generation');
-        
+    public function get_part_no_suggestion($keyword = "", $d_item = "")
+    {
+        $part_no_generation_table = $this->table;
 
-        $sql = "SELECT $part_no_generation_table.title
-        FROM $part_no_generation_table
-        WHERE $part_no_generation_table.deleted=0  AND $part_no_generation_table.title LIKE '%$keyword%'and  $part_no_generation_table.title  NOT IN  $d_item
-        LIMIT 30 
-        ";
-        return $this->db->query($sql)->result();
-     }
+        $sql = "SELECT title
+                FROM $part_no_generation_table
+                WHERE deleted=0 AND title LIKE '%$keyword%'
+                AND title NOT IN ($d_item)
+                LIMIT 30";
 
-    function get_part_no_info_suggestion($item_name = "") {
+        return $this->db->query($sql)->getResult();
+    }
 
-        $part_no_generation_table = $this->db->dbprefix('part_no_generation');
+    public function get_part_no_info_suggestion($item_name = "")
+    {
+        $part_no_generation_table = $this->table;
 
-       $sql = "SELECT $part_no_generation_table.*
-        FROM $part_no_generation_table
-        WHERE $part_no_generation_table.deleted=0  AND $part_no_generation_table.title LIKE '%$item_name%'
-        ORDER BY id DESC LIMIT 1
-        ";
-        
-        $result = $this->db->query($sql); 
+        $sql = "SELECT *
+                FROM $part_no_generation_table
+                WHERE deleted=0 AND title LIKE '%$item_name%'
+                ORDER BY id DESC
+                LIMIT 1";
 
-        if ($result->num_rows()) {
-            return $result->row();
+        $result = $this->db->query($sql);
+
+        if ($result->getNumRows() > 0) {
+            return $result->getRow();
         }
 
+        return null;
     }
 
-    function get_item_suggestionss($s = "") 
-{
- $purchase_orders_table = $this->db->dbprefix('purchase_orders');        
- $vendors_table = $this->db->dbprefix('vendors');
+    public function get_item_suggestionss($s = "")
+    {
+        $purchase_orders_table = 'purchase_orders';
+        $vendors_table = 'vendors';
 
-        $sql = "SELECT $vendors_table.currency , $vendors_table.country
-        FROM $vendors_table
-        LEFT JOIN $purchase_orders_table ON $purchase_orders_table.vendor_id=$vendors_table.id
-        WHERE $vendors_table.deleted=0  AND $purchase_orders_table.id='$s'
-        LIMIT 1 
-        ";
-        return $this->db->query($sql)->row();
-     }
+        $sql = "SELECT $vendors_table.currency, $vendors_table.country
+                FROM $vendors_table
+                LEFT JOIN $purchase_orders_table ON $purchase_orders_table.vendor_id=$vendors_table.id
+                WHERE $vendors_table.deleted=0 AND $purchase_orders_table.id='$s'
+                LIMIT 1";
 
+        return $this->db->query($sql)->getRow();
+    }
 
-     function is_part_no_generation_exists($title, $id = 0) {
-        $result = $this->get_all_where(array("title" => $title, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
-        } else {
-            return false;
+    public function is_part_no_generation_exists($title, $id = 0)
+    {
+        $result = $this->where('title', $title)
+                       ->where('deleted', 0)
+                       ->where('id !=', $id)
+                       ->findAll();
+
+        if (!empty($result)) {
+            return $result[0];
         }
-    }
 
+        return false;
+    }
 }

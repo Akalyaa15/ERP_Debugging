@@ -1,124 +1,102 @@
 <?php
 
-class Vendors_invoice_list_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'vendors_invoice_list';
-        parent::__construct($this->table);
+class VendorsInvoiceListModel extends Model
+{
+    protected $table = 'vendors_invoice_list';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'vendor_id', 'purchase_order_id', 'status_id', 'invoice_date', 'total', 'status', 'deleted'
+    ];
+    protected $returnType = 'object';
+
+    public function getDetails($options = [])
+    {
+        $vendorsInvoiceListTable = $this->db->prefixTable('vendors_invoice_list');
+        $vendorsTable = $this->db->prefixTable('vendors');
+        $taskStatusTable = $this->db->prefixTable('vendors_invoice_status');
+        $vendorsInvoicePaymentListTable = $this->db->prefixTable("vendors_invoice_payments_list");
+
+        $where = "";
+        if (!empty($options['id'])) {
+            $where = " AND $vendorsInvoiceListTable.id=" . $this->db->escape($options['id']);
+        }
+        if (!empty($options['purchase_order_id'])) {
+            $where = " AND $vendorsInvoiceListTable.purchase_order_id=" . $this->db->escape($options['purchase_order_id']);
+        }
+        if (!empty($options['vendor_id'])) {
+            $where .= " AND $vendorsInvoiceListTable.vendor_id=" . $this->db->escape($options['vendor_id']);
+        }
+        if (!empty($options['status_id'])) {
+            $where .= " AND $vendorsInvoiceListTable.status_id=" . $this->db->escape($options['status_id']);
+        }
+        if (!empty($options['start_date']) && !empty($options['end_date'])) {
+            $where .= " AND ($vendorsInvoiceListTable.invoice_date BETWEEN '" . $this->db->escape($options['start_date']) . "' AND '" . $this->db->escape($options['end_date']) . "')";
+        }
+
+        if (isset($options['status'])) {
+            $status = $options['status'];
+            if ($status === "draft") {
+                $where .= " AND  $vendorsInvoiceListTable.status='draft' AND IFNULL(payments_table.paid_amount,0)<=0";
+            } elseif ($status === "not_paid") {
+                $where .= " AND $vendorsInvoiceListTable.status !='draft' AND IFNULL(payments_table.paid_amount,0)<=0";
+            } elseif ($status === "partially_paid") {
+                $where .= " AND IFNULL(payments_table.paid_amount,0)>0 AND IFNULL(payments_table.paid_amount,0)< $vendorsInvoiceListTable.total";
+            } elseif ($status === "fully_paid") {
+                $where .= " AND TRUNCATE(IFNULL(payments_table.paid_amount,0),2)>=$vendorsInvoiceListTable.total";
+            }
+        }
+
+        $sql = "SELECT $vendorsInvoiceListTable.*, $vendorsTable.company_name AS vendor_name, $vendorsTable.currency_symbol AS currency_symbol,
+                $taskStatusTable.key_name AS status_key_name, $taskStatusTable.title AS status_title, $taskStatusTable.color AS status_color, IFNULL(payments_table.paid_amount,0) AS paid_amount
+                FROM $vendorsInvoiceListTable
+                LEFT JOIN $vendorsTable ON $vendorsInvoiceListTable.vendor_id = $vendorsTable.id
+                LEFT JOIN $taskStatusTable ON $vendorsInvoiceListTable.status_id = $taskStatusTable.id
+                LEFT JOIN (SELECT task_id, SUM(title) AS paid_amount FROM $vendorsInvoicePaymentListTable WHERE deleted=0 GROUP BY task_id) AS payments_table ON payments_table.task_id = $vendorsInvoiceListTable.id
+                WHERE $vendorsInvoiceListTable.deleted=0 $where";
+
+        return $this->db->query($sql)->getResult();
     }
 
-    function get_details($options = array()) {
-        $vendors_invoice_list_table = $this->db->dbprefix('vendors_invoice_list');
-        $vendors_table = $this->db->dbprefix('vendors');
-        $task_status_table = $this->db->dbprefix('vendors_invoice_status');
-         $vendors_invoice_payment_list_table = $this->db->dbprefix("vendors_invoice_payments_list");
+    public function getVendorsInvoicePaidAmountSuggestion($item_name = "")
+    {
+        $hsnSacCodeTable = $this->db->prefixTable('vendors_invoice_payments_list');
 
-        $where= "";
-        $id=get_array_value($options, "id");
-        if($id){
-            $where =" AND $vendors_invoice_list_table.id=$id";
+        $sql = "SELECT SUM($hsnSacCodeTable.title) AS paid
+                FROM $hsnSacCodeTable
+                WHERE $hsnSacCodeTable.deleted=0 AND $hsnSacCodeTable.task_id = " . $this->db->escape($item_name);
+
+        $result = $this->db->query($sql);
+
+        if ($result->getNumRows()) {
+            return $result->getRow();
         }
-        $purchase_order_id=get_array_value($options, "purchase_order_id");
-        if($purchase_order_id){
-            $where =" AND $vendors_invoice_list_table.purchase_order_id=$purchase_order_id";
-        }
-        $vendor_id = get_array_value($options, "vendor_id");
-        if($vendor_id){
-            $where .= " AND $vendors_invoice_list_table.vendor_id='$vendor_id'";
-        }
-
-        $status_id = get_array_value($options, "status_id");
-              if($status_id){
-
-            $where .= "AND $vendors_invoice_list_table.status_id='$status_id'";
-        }
-        
-             
-
-        $start_date = get_array_value($options, "start_date");
-        $end_date = get_array_value($options, "end_date");
-        if ($start_date && $end_date) {
-            $where .= " AND ($vendors_invoice_list_table.invoice_date BETWEEN '$start_date' AND '$end_date') ";
-        } 
-
-$status = get_array_value($options, "status");
-        if ($status === "draft") {
-            $where .= " AND  $vendors_invoice_list_table.status='draft' AND IFNULL(payments_table.paid_amount,0)<=0";
-        } else if ($status === "not_paid") {
-            $where .= " AND $vendors_invoice_list_table.status !='draft' AND IFNULL(payments_table.paid_amount,0)<=0";
-        } else if ($status === "partially_paid") {
-            $where .= " AND IFNULL(payments_table.paid_amount,0)>0 AND IFNULL(payments_table.paid_amount,0)< $vendors_invoice_list_table.total";
-        } else if ($status === "fully_paid") {
-            $where .= " AND TRUNCATE(IFNULL(payments_table.paid_amount,0),2)>=$vendors_invoice_list_table.total";
-        } /*else if ($status === "overdue") {
-            $where .= " AND $loan_table.status !='draft' AND $loan_table.due_date<'$now' AND TRUNCATE(IFNULL(payments_table.paid_amount,0),2)<$loan_table.total";
-        }*/
-        
-        $sql = "SELECT $vendors_invoice_list_table.*, $vendors_table.company_name AS vendor_name,$vendors_table.currency_symbol AS currency_symbol ,
-        $task_status_table.key_name AS status_key_name,$task_status_table.title AS status_title,  $task_status_table.color AS status_color,IFNULL(payments_table.paid_amount,0) AS paid_amount
-        FROM $vendors_invoice_list_table
-        LEFT JOIN $vendors_table ON $vendors_invoice_list_table.vendor_id = $vendors_table.id 
-        LEFT JOIN $task_status_table ON $vendors_invoice_list_table.status_id = $task_status_table.id
-        LEFT JOIN (SELECT task_id, SUM(title) AS paid_amount FROM 
-        $vendors_invoice_payment_list_table WHERE deleted=0 GROUP BY task_id) AS payments_table ON payments_table.task_id = $vendors_invoice_list_table.id   
-        WHERE $vendors_invoice_list_table.deleted=0 $where";
-        return $this->db->query($sql);
+        return null;
     }
 
+    public function isVendorsInvoiceExists($invoice_no, $id = 0)
+    {
+        $result = $this->where(['invoice_no' => $invoice_no, 'deleted' => 0])->findAll();
 
-    function get_vendors_invoice_paid_amount_suggestion(
-        $item_name = "") {
-        $hsn_sac_code_table = $this->db->dbprefix('vendors_invoice_payments_list');
-        
-
-        $sql = "SELECT sum($hsn_sac_code_table.title) as paid
-        FROM $hsn_sac_code_table
-        WHERE $hsn_sac_code_table.deleted=0  AND $hsn_sac_code_table.task_id = '$item_name'
-        
-        ";
-        $result = $this->db->query($sql); 
-
-        if ($result->num_rows()) {
-            return $result->row();
+        if ($result && $result[0]->id != $id) {
+            return $result[0];
         }
+        return false;
     }
 
-function is_vendors_invoice_exists($invoice_no, $id = 0) {
-        $result = $this->get_all_where(array("invoice_no" => $invoice_no, "deleted" => 0));
-        if ($result->num_rows() && $result->row()->id != $id ) {
-            return $result->row();
-        } else {
-            return false;
-        }
-    } 
+    public function getPurchaseOrderID($item_name = "", $loan_voucher_no = "")
+    {
+        $purchaseOrdersTable = $this->db->prefixTable('purchase_orders');
 
-    function get_purchase_orderid($item_name = "",$loan_voucher_no="") {
+        $sql = "SELECT $purchaseOrdersTable.*
+                FROM $purchaseOrdersTable
+                WHERE $purchaseOrdersTable.deleted=0 AND $purchaseOrdersTable.vendor_id = " . $this->db->escape($item_name) . " AND  
+                $purchaseOrdersTable.id NOT IN " . $this->db->escape($loan_voucher_no) . "
+                ORDER BY id";
 
-       // $items_table = $this->db->dbprefix('voucher_expenses');
-        //$voucher_table = $this->db->dbprefix('voucher');
-       // $voucher_types_table = $this->db->dbprefix('voucher_types');
-         $purchase_orders_table = $this->db->dbprefix('purchase_orders');
-
-        $sql = "SELECT $purchase_orders_table.*
-        FROM $purchase_orders_table
-       /* LEFT JOIN $voucher_table ON $voucher_table.id= $items_table.estimate_id
-        LEFT JOIN $voucher_types_table ON 
-        $voucher_types_table.id=$voucher_table.voucher_type_id */
-        WHERE $purchase_orders_table.deleted=0  AND $purchase_orders_table.vendor_id = '$item_name' AND  
-        $purchase_orders_table.id  NOT IN  $loan_voucher_no 
-       
-
-        ORDER BY id
-        ";
-        
-       return $this->db->query($sql)->result();
-
-
+        return $this->db->query($sql)->getResult();
     }
-
-
-
-
 }

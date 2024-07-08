@@ -287,6 +287,4 @@ class Crud_model extends CI_Model {
         }
 
         return array("select_string" => $select_string, "join_string" => $join_string);
-    }
-
-}
+    }}

@@ -8,14 +8,13 @@ class ExcelImportModel extends Model
 {
     protected $table = 'bank_statement';
     protected $primaryKey = 'id';
-    protected $useSoftDeletes = false; 
+    protected $useSoftDeletes = false;
     protected $allowedFields = ['ValueName', 'PostDate', 'TransactionId', 'RemitterBranch', 'Description', 'ChequeNo', 'CreditAmount', 'DebitAmount', 'Balance', 'account_number', 'BankName'];
     protected $useTimestamps = false;
 
     public function getDetails($options = [])
     {
         $builder = $this->builder();
-        $builder->select('*');
 
         $id = $options['id'] ?? null;
         $ValueName = $options['ValueName'] ?? null;

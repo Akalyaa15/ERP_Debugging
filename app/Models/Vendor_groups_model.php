@@ -1,26 +1,31 @@
 <?php
 
-class Vendor_groups_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'vendor_groups';
-        parent::__construct($this->table);
-    }
+class VendorGroupsModel extends Model
+{
+    protected $table = 'vendor_groups';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'name', 'description', 'deleted'
+    ];
+    protected $returnType = 'object';
 
-    function get_details($options = array()) {
-        $vendor_groups_table = $this->db->dbprefix('vendor_groups');
+    public function getDetails($options = [])
+    {
+        $vendorGroupsTable = $this->db->prefixTable('vendor_groups');
         $where = "";
-        $id = get_array_value($options, "id");
-        if ($id) {
-            $where = " AND $vendor_groups_table.id=$id";
+
+        if (!empty($options['id'])) {
+            $where = " AND $vendorGroupsTable.id=" . $this->db->escape($options['id']);
         }
 
-        $sql = "SELECT $vendor_groups_table.*
-        FROM $vendor_groups_table
-        WHERE $vendor_groups_table.deleted=0 $where";
-        return $this->db->query($sql);
-    }
+        $sql = "SELECT $vendorGroupsTable.*
+                FROM $vendorGroupsTable
+                WHERE $vendorGroupsTable.deleted=0 $where";
 
+        return $this->db->query($sql)->getResult();
+    }
 }
