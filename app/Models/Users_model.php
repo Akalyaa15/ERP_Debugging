@@ -1,126 +1,140 @@
 <?php
 
-class Users_model extends Crud_model {
+namespace App\Models;
+use CodeIgniter\Model;
+use App\Entities\UserEntity;
 
-    private $table = null;
+class UsersModel extends Model
+{
+    protected $table = 'users';
+    protected $primaryKey = 'id';
+    protected $returnType = UserEntity::class;
 
-    function __construct() {
-        $this->table = 'users';
-        parent::__construct($this->table);
+    protected $allowedFields = [
+        'user_type',
+        'client_id',
+        'vendor_id',
+        'email',
+        'password',
+        'status',
+        'deleted',
+        'disable_login',
+        'is_admin',
+    ];
+    public function __construct()
+    {
+        parent::__construct();
     }
+    public function authenticate($email, $password)
+    {
+        $user = $this->select('id, user_type, client_id, vendor_id')
+                     ->where('email', $email)
+                     ->where('password', md5($password))
+                     ->where('status', 'active')
+                     ->where('deleted', 0)
+                     ->where('disable_login', 0)
+                     ->first();
 
-    function authenticate($email, $password) {
-        $this->db->select("id,user_type,client_id,vendor_id");
-        $result = $this->db->get_where($this->table, array('email' => $email, 'password' => md5($password), 'status' => 'active', 'deleted' => 0, 'disable_login' => 0));
-        if ($result->num_rows() == 1) {
-            $user_info = $result->row();
-
-            //check client login settings
-            if ($user_info->user_type === "client" && get_setting("disable_client_login")) {
+        if ($user) {
+            // Check client or vendor login settings
+            if (($user->user_type === "client" && get_setting("disable_client_login")) ||
+                ($user->user_type === "vendor" && get_setting("disable_vendor_login"))) {
                 return false;
-            }if ($user_info->user_type === "vendor" && get_setting("disable_vendor_login")) {
-                return false;
-            } 
-             else if ($user_info->user_type === "client") {
-                //user can't be loged in if client has deleted
-                $clients_table = $this->db->dbprefix('clients');
-
-                $sql = "SELECT $clients_table.id
-                        FROM $clients_table
-                        WHERE $clients_table.id= $user_info->client_id AND $clients_table.deleted=0
-                        ";
-                $client_result = $this->db->query($sql);
-                if (!$client_result->num_rows()) {
-                    return false;
-                }
-            }else if ($user_info->user_type === "vendor") {
-                //user can't be loged in if client has deleted
-                $vendors_table = $this->db->dbprefix('vendors');
-
-                $sql = "SELECT $vendors_table.id
-                        FROM $vendors_table
-                        WHERE $vendors_table.id= $user_info->vendor_id AND $vendors_table.deleted=0
-                        ";
-                $vendor_result = $this->db->query($sql);
-                if (!$vendor_result->num_rows()) {
-                    return false;
-                }
             }
 
+            // Additional checks for client or vendor
+            $checkTable = ($user->user_type === "client") ? 'clients' : 'vendors';
+            $checkField = ($user->user_type === "client") ? 'client_id' : 'vendor_id';
 
-            $this->session->set_userdata('user_id', $user_info->id);
+            $check = $this->db->table($this->db->dbprefix($checkTable))
+                             ->select('id')
+                             ->where('id', $user->$checkField)
+                             ->where('deleted', 0)
+                             ->get();
+
+            if (!$check->getRow()) {
+                return false;
+            }
+
+            // Set user session
+            $session = session();
+            $session->set('user_id', $user->id);
             return true;
         }
+
+        return false;
+    }
+    public function login_user_id()
+    {
+        $session = session();
+        return $session->get('user_id') ?? false;
     }
 
-    function login_user_id() {
-        $login_user_id = $this->session->user_id;
-        return $login_user_id ? $login_user_id : false;
+    public function sign_out()
+    {
+        $session = session();
+        $session->remove('user_id');
+        return redirect()->to('signin');
     }
 
-    function sign_out() {
-    $this->session->unset_userdata('user_id');
-        redirect('signin');
-    }
-
-    function get_details($options = array()) {
-        $users_table = $this->db->dbprefix('users');
-        $team_member_job_info_table = $this->db->dbprefix('team_member_job_info');
-        $roles_table = $this->db->dbprefix('roles');
-        $where = "";
-        $id = get_array_value($options, "id");
-        $status = get_array_value($options, "status");
-        $user_type = get_array_value($options, "user_type");
-        $client_id = get_array_value($options, "client_id");
-        $vendor_id = get_array_value($options, "vendor_id");
-        $exclude_user_id = get_array_value($options, "exclude_user_id");
-        $company_id = get_array_value($options, "company_id");
-
+    public function get_details($options = [])
+    {
+        $usersTable = $this->table;
+        $teamMemberJobInfoTable = 'team_member_job_info';
+        $rolesTable = 'roles';
+    
+        $builder = $this->db->table($usersTable)
+                            ->select("$usersTable.*, $teamMemberJobInfoTable.date_of_hire, $teamMemberJobInfoTable.salary, $teamMemberJobInfoTable.salary_term")
+                            ->join($teamMemberJobInfoTable, "$teamMemberJobInfoTable.user_id = $usersTable.id", 'left')
+                            ->join($rolesTable, "$rolesTable.id = $usersTable.role_id AND $rolesTable.deleted = 0", 'left')
+                            ->where("$usersTable.deleted", 0);
+    
+        $id = $options['id'] ?? null;
+        $status = $options['status'] ?? null;
+        $userType = $options['user_type'] ?? null;
+        $clientId = $options['client_id'] ?? null;
+        $vendorId = $options['vendor_id'] ?? null;
+        $excludeUserId = $options['exclude_user_id'] ?? null;
+        $companyId = $options['company_id'] ?? null;
+    
         if ($id) {
-            $where .= " AND $users_table.id=$id";
+            $builder->where("$usersTable.id", $id);
         }
+    
         if ($status === "active") {
-            $where .= " AND $users_table.status='active'";
-        } else if ($status === "inactive") {
-            $where .= " AND $users_table.status='inactive'";
+            $builder->where("$usersTable.status", 'active');
+        } elseif ($status === "inactive") {
+            $builder->where("$usersTable.status", 'inactive');
         }
-
-        if ($user_type) {
-            $where .= " AND $users_table.user_type='$user_type'";
+    
+        if ($userType) {
+            $builder->where("$usersTable.user_type", $userType);
         }
-
-        if ($client_id) {
-            $where .= " AND $users_table.client_id=$client_id";
+    
+        if ($clientId) {
+            $builder->where("$usersTable.client_id", $clientId);
         }
-
-        if ($vendor_id) {
-            $where .= " AND $users_table.vendor_id=$vendor_id";
+    
+        if ($vendorId) {
+            $builder->where("$usersTable.vendor_id", $vendorId);
         }
-
-        if ($exclude_user_id) {
-            $where .= " AND $users_table.id!=$exclude_user_id";
+    
+        if ($excludeUserId) {
+            $builder->where("$usersTable.id !=", $excludeUserId);
         }
-        if ($is_admin) {
-            $where .= " AND $users_table.is_admin!=$is_admin";
+    
+        if ($companyId) {
+            $builder->where("$usersTable.company_id", $companyId);
         }
-
-        if ($company_id) {
-            $where .= " AND $users_table.company_id='$company_id'";
-        }
-
-        $custom_field_type = "team_members";
-        if ($user_type === "client") {
-            $custom_field_type = "contacts";
-        }
+    
+        $customFieldType = ($userType === "client") ? "contacts" : "team_members";
 
         //prepare custom fild binding query
         $custom_fields = get_array_value($options, "custom_fields");
         $custom_field_query_info = $this->prepare_custom_field_query_string($custom_field_type, $custom_fields, $users_table);
         $select_custom_fieds = get_array_value($custom_field_query_info, "select_string");
         $join_custom_fieds = get_array_value($custom_field_query_info, "join_string");
-
-
-        //prepare full query string
+       //prepare full query string
         $sql = "SELECT $users_table.*,
             $team_member_job_info_table.date_of_hire, $team_member_job_info_table.salary, $team_member_job_info_table.salary_term $select_custom_fieds,  $roles_table.title as role_title
         FROM $users_table
@@ -293,14 +307,10 @@ function get_item_info_suggestion($branch = "",$designation = "",$country = "",$
 
         if ($result->num_rows()) {
             return $result->num_rows();
-        }
-
-    }
+        }}
 function get_item_info_suggestion_id($branch = "",$company = "") {
 
         $items_table = $this->db->dbprefix('users');
-        
-
         $sql = "SELECT $items_table.*
         FROM $items_table
         WHERE $items_table.deleted=0 

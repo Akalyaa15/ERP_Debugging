@@ -4,7 +4,7 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class VoucherCommentsModel extends CrudModel
+class VoucherCommentsModel extends Model
 {
     protected $table = 'voucher_comments';
     protected $primaryKey = 'id';

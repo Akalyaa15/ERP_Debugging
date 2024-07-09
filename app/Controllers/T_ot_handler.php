@@ -2,8 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Models\UsersModel; // Ensure you import your UsersModel
-
+use App\Models\UsersModel; 
 class T_ot_handler extends BaseController
 {
     protected $usersModel;

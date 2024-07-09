@@ -7,22 +7,21 @@ use CodeIgniter\Model;
 class Tools_model extends Model
 {
     protected $table = 'tools';
-    protected $primaryKey = 'id'; 
+    protected $primaryKey = 'id';
 
     protected $allowedFields = [
         'id',
         'title',
     ];
 
-    protected $useSoftDeletes = true; // Enable soft deletes
+    protected $useSoftDeletes = true; 
 
-    protected $returnType = 'object'; // Adjust return type as needed
+    protected $returnType = 'object'; 
 
     public function getDetails($options = [])
     {
         $builder = $this->select('*')
-                        ->where('deleted', 0); // Assuming 'deleted' column is used for soft deletes
-
+                        ->where('deleted', 0); 
         if (!empty($options['id'])) {
             $builder->where('id', $options['id']);
         }

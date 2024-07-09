@@ -1,15 +1,11 @@
 <?php
-
 class Timesheets_model extends Crud_model {
-
-    private $table = null;
-
-    function __construct() {
+     private $table = null;
+     function __construct() {
         $this->table = 'project_time';
         parent::__construct($this->table);
     }
-
-    function get_details($options = array()) {
+function get_details($options = array()) {
         $timesheet_table = $this->db->dbprefix('project_time');
         $tasks_table = $this->db->dbprefix('tasks');
         $projects_table = $this->db->dbprefix('projects');

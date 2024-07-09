@@ -9,8 +9,8 @@ use App\Models\TaskStatusModel;
 use App\Models\AttendanceTodoModel;
 use App\Models\AttendanceTaskTodoModel;
 class Attendance extends BaseController
-{
-    protected $settingsModel;
+
+{   protected $settingsModel;
     protected $attendanceModel;
     protected $tasksModel;
     protected $usersModel;
@@ -1335,8 +1335,7 @@ public function daily_details_list_ot_handler_data()
             ];
         }
     }
-
-    return $this->response->setJSON(['data' => $result]);
+   return $this->response->setJSON(['data' => $result]);
 }
 public function update_user_timezone()
 {

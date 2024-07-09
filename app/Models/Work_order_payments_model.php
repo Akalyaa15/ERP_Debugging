@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Models;
-
 use CodeIgniter\Model;
+
 class Work_order_payments_model extends Model
 {
     protected $table = 'work_order_payments';
@@ -13,8 +13,7 @@ class Work_order_payments_model extends Model
     {
         parent::__construct();
     }
-
-    public function get_details($options = [])
+ public function get_details($options = [])
     {
         $work_order_payments_table = $this->table;
         $work_orders_table = 'work_orders';

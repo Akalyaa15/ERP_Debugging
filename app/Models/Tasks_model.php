@@ -1,16 +1,46 @@
 <?php
 
-class Tasks_model extends Crud_model {
+namespace App\Models;
 
-    private $table = null;
+use CodeIgniter\Model;
 
-    function __construct() {
-        $this->table = 'tasks';
-        parent::__construct($this->table);
-        parent::init_activity_log("task", "title", "project", "project_id");
+class Tasks_model extends Model
+{
+    protected $table = 'tasks';
+    protected $primaryKey = 'id';
+    protected $returnType = 'array';
+    protected $useSoftDeletes = true;
+    protected $allowedFields = [
+        'title',
+        'description',
+        'assigned_to',
+        'collaborators',
+        'milestone_id',
+        'labels',
+        'status',
+        'status_id',
+        'start_date',
+        'deadline',
+        'project_id',
+        'points',
+        'deleted',
+        'sort'
+    ];
+    protected $useTimestamps = true;
+    protected $createdField = 'created_at';
+    protected $updatedField = 'updated_at';
+    protected $deletedField = 'deleted_at';
+    protected $validationRules = [];
+    protected $validationMessages = [];
+    protected $skipValidation = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->initActivityLog("task", "title", "project", "project_id");
     }
 
-    function schema() {
+    public function schema() {
         return array(
             "id" => array(
                 "label" => lang("id"),
@@ -83,7 +113,7 @@ class Tasks_model extends Crud_model {
             )
         );
     }
-
+    
     function get_details($options = array()) {
         $tasks_table = $this->db->dbprefix('tasks');
         $users_table = $this->db->dbprefix('users');
@@ -120,13 +150,6 @@ class Tasks_model extends Crud_model {
         if ($exclude_status_id) {
             $where .= " AND $tasks_table.status_id!=$exclude_status_id ";
         }
-
-
-        /*$assigned_to = get_array_value($options, "assigned_to");
-        if ($assigned_to) {
-            $where .= " AND $tasks_table.assigned_to=$assigned_to";
-        }*/
-
         $assigned_to = get_array_value($options, "assigned_to");
         if ($assigned_to) {
             $where .= " AND ($tasks_table.assigned_to=$assigned_to OR FIND_IN_SET('$assigned_to', $tasks_table.collaborators))";

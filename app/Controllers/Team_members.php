@@ -1,461 +1,509 @@
-<?php 
- namespace App\Controllers;
+<?php
 
-class Team_members extends BaseController {
-    protected$countriesmodel;
-    protected$customfieldsmodel;
-    protected$usersmodel;
-    protected$emailtemplatesmodel;
-    protected$sociallinksmodel;
-    protected$branchesmodel;
-    protected$designationmodel;
-    protected$kycinfomodel;
-    protected$settingsmodel;
-    protected$rolesmodel;
-    protected$companysmodel;
-    protected$branchesmodel;
-    protected$designationmodel;
-    protected$epartmentmodel;
-    protected$banknamemodel;
-    protected$generalfilesmodel;
-    protected$countriesmodel;
+namespace App\Controllers;
 
+use App\Models\CountriesModel;
+use App\Models\CustomFieldsModel;
+use App\Models\UsersModel;
+use App\Models\EmailTemplatesModel;
+use App\Models\SocialLinksModel;
+use App\Models\BranchesModel;
+use App\Models\DesignationModel;
+use App\Models\KycInfoModel;
+use App\Models\SettingsModel;
+use App\Models\RolesModel;
+use App\Models\CompanysModel;
+use App\Models\DepartmentsModel;
+use App\Models\BankNameModel;
+use App\Models\GeneralFilesModel;
+use CodeIgniter\API\ResponseTrait;
 
-    function __construct() {
-        parent::__construct();
-        $this->access_only_team_members();
+class TeamMembers extends BaseController
+{
+    use ResponseTrait;
+
+    protected $countriesModel;
+    protected $customFieldsModel;
+    protected $usersModel;
+    protected $emailTemplatesModel;
+    protected $socialLinksModel;
+    protected $branchesModel;
+    protected $designationModel;
+    protected $kycInfoModel;
+    protected $settingsModel;
+    protected $rolesModel;
+    protected $companysModel;
+    protected $departmentsModel;
+    protected $bankNameModel;
+    protected $generalFilesModel;
+
+    public function __construct()
+    {
+        $this->countriesModel = new CountriesModel();
+        $this->customFieldsModel = new CustomFieldsModel();
+        $this->usersModel = new UsersModel();
+        $this->emailTemplatesModel = new EmailTemplatesModel();
+        $this->socialLinksModel = new SocialLinksModel();
+        $this->branchesModel = new BranchesModel();
+        $this->designationModel = new DesignationModel();
+        $this->kycInfoModel = new KycInfoModel();
+        $this->settingsModel = new SettingsModel();
+        $this->rolesModel = new RolesModel();
+        $this->companysModel = new CompanysModel();
+        $this->departmentsModel = new DepartmentsModel();
+        $this->bankNameModel = new BankNameModel();
+        $this->generalFilesModel = new GeneralFilesModel();
+
+        helper(['form', 'url']);
     }
-
-    private function can_view_team_members_contact_info() {
+    private function canViewTeamMembersContactInfo()
+    {
         if ($this->login_user->user_type == "staff") {
-            if ($this->login_user->is_admin) {
-                return true;
-            } else if (get_array_value($this->login_user->permissions, "can_view_team_members_contact_info") == "1") {
+            if ($this->login_user->is_admin || get_array_value($this->login_user->permissions, "can_view_team_members_contact_info") == "1") {
                 return true;
             }
         }
+        return false;
     }
-
-    private function can_view_team_members_social_links() {
+    private function canViewTeamMembersSocialLinks()
+    {
         if ($this->login_user->user_type == "staff") {
-            if ($this->login_user->is_admin) {
-                return true;
-            } else if (get_array_value($this->login_user->permissions, "can_view_team_members_social_links") == "1") {
+            if ($this->login_user->is_admin || get_array_value($this->login_user->permissions, "can_view_team_members_social_links") == "1") {
                 return true;
             }
         }
+        return false;
     }
-function get_currency_symbol() {
-    $options=array("numberCode"=>$this->input->post("item_name"));
-        $item = $this->Countries_model->get_details($options)->row();
+    public function getCurrencySymbol()
+    {
+        $options = [
+            "numberCode" => $this->request->getPost("item_name")
+        ];
+        
+        $item = $this->countriesModel->getDetails($options)->getRow();
 
-
-        $status=$item->currency_symbol;
         if ($item) {
-            echo json_encode(array("success" => true, "item_status"=>$status));
+            $status = $item->currency_symbol;
+            return $this->respond([
+                "success" => true,
+                "item_status" => $status
+            ]);
         } else {
-            echo json_encode(array("success" => false));
+            return $this->respond([
+                "success" => false
+            ]);
         }
     }
-    private function update_only_allowed_members($user_id) {
-        if ($this->can_update_team_members_info($user_id)) {
-            return true; //own profile
+    private function updateOnlyAllowedMembers($user_id)
+    {
+        if ($this->canUpdateTeamMembersInfo($user_id)) {
+            return true; // Own profile
         } else {
-            redirect("forbidden");
+            return redirect()->to(site_url('forbidden'));
         }
-    }
-
-    //only admin can change other user's info
+    }//only admin can change other user's info
     //none admin users can only change his/her own info
-    //allowed members can update other members info    
-    private function can_update_team_members_info($user_id) {
-        $access_info = $this->get_access_info("team_member_update_permission");
+    //allowed members can update other members info
+    private function canUpdateTeamMembersInfo($user_id)
+    {
+        $access_info = $this->getAccessInfo("team_member_update_permission");
 
         if ($this->login_user->id === $user_id) {
-            return true; //own profile
-        } else if ($access_info->access_type == "all") {
-            return true; //has access to change all user's profile
-        } else if ($user_id && in_array($user_id, $access_info->allowed_members)) {
-            return true; //has permission to update this user's profile
+            return true; // Own profile
+        } elseif ($access_info->access_type == "all") {
+            return true; // Has access to change all user's profile
+        } elseif ($user_id && in_array($user_id, $access_info->allowed_members)) {
+            return true; // Has permission to update this user's profile
         } else {
-
             return false;
         }
     }
 
     //only admin can change other user's info
     //none admin users can only change his/her own info
-    private function only_admin_or_own($user_id) {
+    private function onlyAdminOrOwn($user_id)
+    {
         if ($user_id && ($this->login_user->is_admin || $this->login_user->id === $user_id)) {
             return true;
         } else {
-            redirect("forbidden");
+            return redirect()->to(site_url('forbidden'));
         }
     }
-
-    public function index() {
-        if (!$this->can_view_team_members_list()) {
-            redirect("forbidden");
+    public function index()
+    {
+        if (!$this->canViewTeamMembersList()) {
+            return redirect()->to(site_url('forbidden'));
         }
 
-        $view_data["show_contact_info"] = $this->can_view_team_members_contact_info();
+        $view_data = [
+            "show_contact_info" => $this->canViewTeamMembersContactInfo(),
+            "custom_field_headers" => $this->customFieldsModel->getCustomFieldHeadersForTable("team_members", $this->login_user->is_admin, $this->login_user->user_type)
+        ];
 
-        $view_data["custom_field_headers"] = $this->Custom_fields_model->get_custom_field_headers_for_table("team_members", $this->login_user->is_admin, $this->login_user->user_type);
-
-       // $this->template->rander("team_members/index", $view_data);
-        $this->template->rander_scroll("team_members/index", $view_data);
+        // $this->template->render("team_members/index", $view_data);
+        return view("team_members/index", $view_data);
     }
 
     /* open new member modal */
 
-    function modal_form() {
-        $this->access_only_admin();
+    public function modalForm()
+    {
+        $this->accessOnlyAdmin();
 
-        validate_submitted_data(array(
-            "id" => "numeric"
-        ));
-
-        $view_data['role_dropdown'] = $this->_get_roles_dropdown();
-   $view_data['country_dropdown'] = $this->_get_countries_dropdown();
-   $view_data['company_dropdown'] = $this->_get_companies_dropdown();
-   $view_data['branches_dropdown'] = $this->_get_branches_dropdown();
-   $view_data['designation_dropdown'] = $this->_get_designation_dropdown();
-   $view_data['department_dropdown'] = array("" => "-") +$this->_get_department_dropdown();
-        $id = $this->input->post('id');
-        $options = array(
-            "id" => $id,
-        );
-
-        $view_data['model_info'] = $this->Users_model->get_details($options)->row();
-        $options = array(
-            "user_type" => 'staff',
-        );
-//$view_data['count'] = (1+$this->Users_model->get_counts($options)->num_rows());
-        $view_data["custom_fields"] = $this->Custom_fields_model->get_combined_details("team_members", 0, $this->login_user->is_admin, $this->login_user->user_type)->result();
-
-        //annual dropdown  
-        $annual_leave_dropdown = array();
-        $no_annual_dropdown = range(1,365);
-        foreach ($no_annual_dropdown  as $key => $value) {
-         $annual_leave_dropdown[$value] = $value;
+        // Validate submitted data
+        helper('form');
+        $rules = [
+            'id' => 'numeric'
+        ];
+        if (!$this->validate($rules)) {
+            return $this->failValidationErrors($this->validator->getErrors());
         }
-        $view_data['annual_leave_dropdown'] = $annual_leave_dropdown;
 
-        $this->load->view('team_members/modal_form', $view_data);
+        $viewData = [
+            'role_dropdown' => $this->_getRolesDropdown(),
+            'country_dropdown' => $this->_getCountriesDropdown(),
+            'company_dropdown' => $this->_getCompaniesDropdown(),
+            'branches_dropdown' => $this->_getBranchesDropdown(),
+            'designation_dropdown' => $this->_getDesignationDropdown(),
+            'department_dropdown' => array("" => "-") + $this->_getDepartmentDropdown(),
+        ];
+
+        $id = $this->request->getPost('id');
+        $options = ["id" => $id];
+        $viewData['model_info'] = $this->usersModel->getDetails($options)->getRow();
+        $options = ["user_type" => 'staff'];
+        $viewData['custom_fields'] = $this->customFieldsModel->getCombinedDetails("team_members", 0, $this->login_user->is_admin, $this->login_user->user_type)->getResult();
+
+        // Annual leave dropdown
+        $annual_leave_dropdown = range(1, 365);
+        $viewData['annual_leave_dropdown'] = array_combine($annual_leave_dropdown, $annual_leave_dropdown);
+
+        return view('team_members/modal_form', $viewData);
     }
 
-    /* save new member */
+    public function addTeamMember()
+    {
+        $this->accessOnlyAdmin();
 
-    function add_team_member() {
-        $this->access_only_admin();
-
-        //check duplicate email address, if found then show an error message
-        if ($this->Users_model->is_email_exists($this->input->post('email'))) {
-            echo json_encode(array("success" => false, 'message' => lang('duplicate_email')));
-            exit();
+        // Validate submitted data
+        helper('form');
+        $rules = [
+            'email' => 'required|valid_email',
+            'first_name' => 'required',
+            'last_name' => 'required',
+            'job_title' => 'required',
+            'role' => 'required'
+        ];
+        if (!$this->validate($rules)) {
+            return $this->failValidationErrors($this->validator->getErrors());
         }
 
-        validate_submitted_data(array(
-            "email" => "required|valid_email",
-            "first_name" => "required",
-            "last_name" => "required",
-            "job_title" => "required",
-            "role" => "required"
-        ));
+        // Check duplicate email address
+        if ($this->usersModel->isEmailExists($this->request->getPost('email'))) {
+            return $this->fail(json_encode(array("success" => false, 'message' => lang('duplicate_email'))));
+        }
 
-        $user_data = array(
-            "email" => $this->input->post('email'),
-            "password" => md5($this->input->post('password')),
-            "first_name" => $this->input->post('first_name'),
-            "last_name" => $this->input->post('last_name'),
-            "is_admin" => $this->input->post('is_admin'),
-            "address" => $this->input->post('address'),
-            "phone" => $this->input->post('phone'),
-            "gender" => $this->input->post('gender'),
-            "job_title" => $this->input->post('job_title'),
-            "employee_id" => $this->input->post('employee_id'),
-            "virtual_id" => $this->input->post('virtual_id'),
-            "phone" => $this->input->post('phone'),
-            "gender" => $this->input->post('gender'),
-            "country" => $this->input->post('country'),
-            "department" => $this->input->post('department'),
-            "designation" => $this->input->post('designation'),
-            "branch" => $this->input->post('branch'),
+        // Prepare user data
+        $userData = [
+            "email" => $this->request->getPost('email'),
+            "password" => md5($this->request->getPost('password')),
+            "first_name" => $this->request->getPost('first_name'),
+            "last_name" => $this->request->getPost('last_name'),
+            "is_admin" => $this->request->getPost('is_admin'),
+            "address" => $this->request->getPost('address'),
+            "phone" => $this->request->getPost('phone'),
+            "gender" => $this->request->getPost('gender'),
+            "job_title" => $this->request->getPost('job_title'),
+            "employee_id" => $this->request->getPost('employee_id'),
+            "virtual_id" => $this->request->getPost('virtual_id'),
+            "country" => $this->request->getPost('country'),
+            "department" => $this->request->getPost('department'),
+            "designation" => $this->request->getPost('designation'),
+            "branch" => $this->request->getPost('branch'),
             "user_type" => "staff",
-            "work_mode" => $this->input->post('work_mode'),
-            "created_at" => get_current_utc_time(),
-            "annual_leave" => $this->input->post('annual_leave'),
-            "company_id" => $this->input->post('company'),
-            "buid" => $this->input->post('buid'),
-        );
+            "work_mode" => $this->request->getPost('work_mode'),
+            "created_at" => gmdate('Y-m-d H:i:s'),
+            "annual_leave" => $this->request->getPost('annual_leave'),
+            "company_id" => $this->request->getPost('company'),
+            "buid" => $this->request->getPost('buid'),
+        ];
 
-        //make role id or admin permission 
-        $role = $this->input->post('role');
-        $role_id = $role;
+        // Set role id or admin permission
+        $role = $this->request->getPost('role');
+        $role_id = $role === "admin" ? 0 : $role;
+        $userData["is_admin"] = $role === "admin" ? 1 : 0;
+        $userData["role_id"] = $role_id;
 
-        if ($role === "admin") {
-            $user_data["is_admin"] = 1;
-            $user_data["role_id"] = 0;
-        } else {
-            $user_data["is_admin"] = 0;
-            $user_data["role_id"] = $role_id;
-        }
+        // Add a new team member
+        $userId = $this->usersModel->save($userData);
+        if ($userId) {
+            // Save job info for the user
+            $jobData = [
+                "user_id" => $userId,
+                "salary" => $this->request->getPost('salary') ? $this->request->getPost('salary') : 0,
+                "salary_term" => $this->request->getPost('salary_term'),
+                "date_of_hire" => $this->request->getPost('date_of_hire'),
+                "currency_symbol" => $this->request->getPost('currency_symbol'),
+                "currency" => $this->request->getPost('currency')
+            ];
+            $this->usersModel->saveJobInfo($jobData);
 
+            // Save custom fields
+            save_custom_fields("team_members", $userId, $this->login_user->is_admin, $this->login_user->user_type);
 
-        //add a new team member
-        $user_id = $this->Users_model->save($user_data);
-        if ($user_id) {
-            //user added, now add the job info for the user
-            $job_data = array(
-                "user_id" => $user_id,
-                "salary" => $this->input->post('salary') ? $this->input->post('salary') : 0,
-                "salary_term" => $this->input->post('salary_term'),
-                "date_of_hire" => $this->input->post('date_of_hire'),
-                "currency_symbol" => $this->input->post('currency_symbol'),
-                 "currency" => $this->input->post('currency')
-            );
-            $this->Users_model->save_job_info($job_data);
+            // Send login details to user
+            if ($this->request->getPost('email_login_details')) {
+                // Get the login details template
+                $emailTemplate = $this->emailTemplatesModel->getFinalTemplate("login_info");
 
+                // Parse email template data
+                $parserData = [
+                    "SIGNATURE" => $emailTemplate->signature,
+                    "USER_FIRST_NAME" => $userData["first_name"],
+                    "USER_LAST_NAME" => $userData["last_name"],
+                    "USER_LOGIN_EMAIL" => $userData["email"],
+                    "USER_LOGIN_PASSWORD" => $this->request->getPost('password'),
+                    "DASHBOARD_URL" => base_url(),
+                    "LOGO_URL" => get_logo_url()
+                ];
 
-            save_custom_fields("team_members", $user_id, $this->login_user->is_admin, $this->login_user->user_type);
-
-            //send login details to user
-            if ($this->input->post('email_login_details')) {
-
-                //get the login details template
-                $email_template = $this->Email_templates_model->get_final_template("login_info");
-
-                $parser_data["SIGNATURE"] = $email_template->signature;
-                $parser_data["USER_FIRST_NAME"] = $user_data["first_name"];
-                $parser_data["USER_LAST_NAME"] = $user_data["last_name"];
-                $parser_data["USER_LOGIN_EMAIL"] = $user_data["email"];
-                $parser_data["USER_LOGIN_PASSWORD"] = $this->input->post('password');
-                $parser_data["DASHBOARD_URL"] = base_url();
-                $parser_data["LOGO_URL"] = get_logo_url();
-
-                $message = $this->parser->parse_string($email_template->message, $parser_data, TRUE);
-                send_app_mail($this->input->post('email'), $email_template->subject, $message);
+                $message = $this->parser->setData($parserData)->renderString($emailTemplate->message);
+                send_app_mail($this->request->getPost('email'), $emailTemplate->subject, $message);
             }
-        }
 
-        if ($user_id) {
-            echo json_encode(array("success" => true, "data" => $this->_row_data($user_id), 'id' => $user_id, 'message' => lang('record_saved')));
+            return $this->respondCreated([
+                "success" => true,
+                "data" => $this->_rowData($userId),
+                'id' => $userId,
+                'message' => lang('record_saved')
+            ]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('error_occurred')));
+            return $this->fail([
+                "success" => false,
+                'message' => lang('error_occurred')
+            ]);
         }
     }
+    public function getEmployeeDetails()
+    {
+        $branch = $this->request->getPost('branch');
+        $designation = $this->request->getPost('designation');
+        $country = $this->request->getPost('country');
+        $department = $this->request->getPost('department');
+        $company = $this->request->getPost('company');
 
+        $item = 1 + $this->usersModel->getItemInfoSuggestion($branch, $designation, $country, $department, $company);
+        $items = 1 + $this->usersModel->getItemInfoSuggestionId($branch, $company);
 
-function get_employee_details() {
-   
-        $item = (1+$this->Users_model->get_item_info_suggestion($this->input->post("branch"),$this->input->post("designation"),$this->input->post("country"),$this->input->post("department"),$this->input->post("company")));
+        $str2 = substr($company, 2);
 
-       $items = (1+$this->Users_model->get_item_info_suggestion_id($this->input->post("branch"),$this->input->post("company"))); 
-        $str = $this->input->post("company");
-$str2 = substr($str, 2);
         if ($item) {
-            echo json_encode(array("success" => true, "item_info" => $item, "e_id" => $items, "company_id" => $str2));
+            return $this->respond([
+                "success" => true,
+                "item_info" => $item,
+                "e_id" => $items,
+                "company_id" => $str2
+            ]);
         } else {
-            echo json_encode(array("success" => false));
+            return $this->respond(["success" => false]);
         }
     }
-    /* open invitation modal */
-
-    function invitation_modal() {
-        $this->access_only_admin();
-        $this->load->view('team_members/invitation_modal');
+    public function invitationModal()
+    {
+        $this->accessOnlyAdmin();
+        return view('team_members/invitation_modal');
     }
+    public function sendInvitation()
+    {
+        $this->accessOnlyAdmin();
 
-    //send a team member invitation to an email address
-    function send_invitation() {
-        $this->access_only_admin();
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'email[]' => 'required|valid_email'
+        ]);
 
-        validate_submitted_data(array(
-            "email[]" => "required|valid_email"
-        ));
+        if (!$validation->withRequest($this->request)->run()) {
+            return $this->failValidationErrors($validation->getErrors());
+        }
 
-        $email_array = $this->input->post('email');
-        $email_array = array_unique($email_array);
+        $emailArray = array_unique($this->request->getPost('email'));
 
-        //get the send invitation template 
-        $email_template = $this->Email_templates_model->get_final_template("team_member_invitation");
+        $emailTemplate = $this->emailTemplatesModel->getFinalTemplate("team_member_invitation");
 
-        $parser_data["INVITATION_SENT_BY"] = $this->login_user->first_name . " " . $this->login_user->last_name;
-        $parser_data["SIGNATURE"] = $email_template->signature;
-        $parser_data["SITE_URL"] = get_uri();
-        $parser_data["LOGO_URL"] = get_logo_url();
+        $parserData = [
+            "INVITATION_SENT_BY" => $this->login_user->first_name . " " . $this->login_user->last_name,
+            "SIGNATURE" => $emailTemplate->signature,
+            "SITE_URL" => base_url(),
+            "LOGO_URL" => get_logo_url()
+        ];
 
-        $send_email = array();
+        $sendEmail = [];
 
-        foreach ($email_array as $email) {
-            //make the invitation url with 24hrs validity
+        foreach ($emailArray as $email) {
             $key = encode_id($this->encryption->encrypt('staff|' . $email . '|' . (time() + (24 * 60 * 60))), "signup");
-            $parser_data['INVITATION_URL'] = get_uri("signup/accept_invitation/" . $key);
+            $parserData['INVITATION_URL'] = site_url("signup/accept_invitation/" . $key);
 
-            //send invitation email
-            $message = $this->parser->parse_string($email_template->message, $parser_data, TRUE);
-
-            $send_email[] = send_app_mail($email, $email_template->subject, $message);
+            $message = $this->parser->setData($parserData)->renderString($emailTemplate->message);
+            $sendEmail[] = send_app_mail($email, $emailTemplate->subject, $message);
         }
 
-        if (!in_array(false, $send_email)) {
-            if (count($send_email) != 0 && count($send_email) == 1) {
-                echo json_encode(array('success' => true, 'message' => lang("invitation_sent")));
+        if (!in_array(false, $sendEmail)) {
+            if (count($sendEmail) != 0 && count($sendEmail) == 1) {
+                return $this->respond([
+                    'success' => true,
+                    'message' => lang("invitation_sent")
+                ]);
             } else {
-                echo json_encode(array('success' => true, 'message' => lang("invitations_sent")));
+                return $this->respond([
+                    'success' => true,
+                    'message' => lang("invitations_sent")
+                ]);
             }
         } else {
-            echo json_encode(array('success' => false, 'message' => lang('error_occurred')));
+            return $this->respond([
+                'success' => false,
+                'message' => lang('error_occurred')
+            ]);
         }
     }
-
-    //prepere the data for members list
-    function list_data() {
-        if (!$this->can_view_team_members_list()) {
-            redirect("forbidden");
+    public function listData()
+    {
+        if (!$this->canViewTeamMembersList()) {
+            return redirect()->to("forbidden");
         }
 
-        $custom_fields = $this->Custom_fields_model->get_available_fields_for_table("team_members", $this->login_user->is_admin, $this->login_user->user_type);
-        $options = array(
-            "status" => $this->input->post("status"),
-            "user_type" => "staff",
-            "custom_fields" => $custom_fields
-        );
-if(!$this->login_user->is_admin){
-        $options = array(
-            "status" => $this->input->post("status"),
-            "user_type" => "staff",
-            "custom_fields" => $custom_fields,
-            "is_admin"=>"1"
-        );
-}
+        $customFields = $this->customFieldsModel->getAvailableFieldsForTable("team_members", $this->login_user->is_admin, $this->login_user->user_type);
 
-        $list_data = $this->Users_model->get_details($options)->result();
-        $result = array();
-        foreach ($list_data as $data) {
-            $result[] = $this->_make_row($data, $custom_fields);
+        $options = [
+            "status" => $this->request->getPost("status"),
+            "user_type" => "staff",
+            "custom_fields" => $customFields
+        ];
+
+        if (!$this->login_user->is_admin) {
+            $options["is_admin"] = "1";
         }
-        echo json_encode(array("data" => $result));
+
+        $listData = $this->usersModel->getDetails($options)->getResult();
+        $result = [];
+
+        foreach ($listData as $data) {
+            $result[] = $this->_makeRow($data, $customFields);
+        }
+
+        return $this->respond([
+            "data" => $result
+        ]);
     }
+    public function rowData($id)
+    {
+        $customFields = $this->customFieldsModel->getAvailableFieldsForTable("team_members", $this->login_user->is_admin, $this->login_user->user_type);
 
-    //get a row data for member list
-    function _row_data($id) {
-        $custom_fields = $this->Custom_fields_model->get_available_fields_for_table("team_members", $this->login_user->is_admin, $this->login_user->user_type);
-        $options = array(
+        $options = [
             "id" => $id,
-            "custom_fields" => $custom_fields
-        );
+            "custom_fields" => $customFields
+        ];
 
-        $data = $this->Users_model->get_details($options)->row();
-        return $this->_make_row($data, $custom_fields);
+        $data = $this->usersModel->getDetails($options)->getRow();
+        return $this->respond($this->_makeRow($data, $customFields));
     }
 
     //prepare team member list row
-    private function _make_row($data, $custom_fields) {
-        $image_url = get_avatar($data->image);
-        $user_avatar = "<span class='avatar avatar-xs'><img src='$image_url' alt='...'></span>";
-        $full_name = $data->first_name . " " . $data->last_name . " ";
-
-
-        //check contact info view permissions
-        $show_cotact_info = $this->can_view_team_members_contact_info();
-        if($data->work_mode == 0){
-    $work_mode ="Indoor";
-}else if($data->work_mode == 1){
-    $work_mode ="Outdoor";
-}
-
-        $row_data = array(
-            $user_avatar,
-            get_team_member_profile_link($data->id, $full_name),
+    private function _makeRow($data, $customFields)
+    {
+        $imageUrl = get_avatar($data->image);
+        $userAvatar = "<span class='avatar avatar-xs'><img src='$imageUrl' alt='...'></span>";
+        $fullName = $data->first_name . " " . $data->last_name . " ";
+    
+        // Check contact info view permissions
+        $showContactInfo = $this->canViewTeamMembersContactInfo();
+    
+        $workMode = ($data->work_mode == 0) ? "Indoor" : "Outdoor";
+    
+        $rowData = [
+            $userAvatar,
+            get_team_member_profile_link($data->id, $fullName),
             $data->job_title,
-             $data->role_title,
-             $work_mode,
-            $show_cotact_info ? $data->email : "",
-            $show_cotact_info && $data->phone ? $data->phone : "-",
-            $show_cotact_info && $data->alternative_phone ? $data->alternative_phone : "-"
-        );
-
-        foreach ($custom_fields as $field) {
-            $cf_id = "cfv_" . $field->id;
-            $row_data[] = $this->load->view("custom_fields/output_" . $field->field_type, array("value" => $data->$cf_id), true);
+            $data->role_title,
+            $workMode,
+            $showContactInfo ? $data->email : "",
+            $showContactInfo && $data->phone ? $data->phone : "-",
+            $showContactInfo && $data->alternative_phone ? $data->alternative_phone : "-"
+        ];
+    
+        foreach ($customFields as $field) {
+            $cfId = "cfv_" . $field->id;
+            $rowData[] = view("custom_fields/output_" . $field->field_type, ["value" => $data->$cfId]);
         }
-
-        $delete_link = "";
-        if ($this->login_user->is_admin && $this->login_user->id != $data->id) {
-            $delete_link = js_anchor("<i class='fa fa-times fa-fw'></i>", array('title' => lang('delete_team_member'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("team_members/delete"), "data-action" => "delete-confirmation"));
+    
+        $deleteLink = "";
+        if ($this->loginUser->is_admin && $this->loginUser->id != $data->id) {
+            $deleteLink = anchor(
+                "<i class='fa fa-times fa-fw'></i>",
+                '',
+                [
+                    'title' => lang('delete_team_member'),
+                    'class' => 'delete',
+                    'data-id' => $data->id,
+                    'data-action-url' => site_url("team_members/delete"),
+                    'data-action' => 'delete-confirmation'
+                ]
+            );
         }
-
-        $row_data[] = $delete_link;
-
-        return $row_data;
+    
+        $rowData[] = $deleteLink;
+    
+        return $rowData;
     }
-
     //delete a team member
-    function delete() {
+    public function delete()
+    {
         $this->access_only_admin();
 
-        validate_submitted_data(array(
-            "id" => "required|numeric"
-        ));
+        $id = $this->request->getPost('id');
 
-        $id = $this->input->post('id');
-
-        if ($id != $this->login_user->id && $this->Users_model->delete($id)) {
-            echo json_encode(array("success" => true, 'message' => lang('record_deleted')));
+        if ($id != $this->login_user->id && $this->usersModel->delete($id)) {
+            return $this->response->setJSON(['success' => true, 'message' => lang('record_deleted')]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('record_cannot_be_deleted')));
+            return $this->response->setJSON(['success' => false, 'message' => lang('record_cannot_be_deleted')]);
         }
     }
 
     //show team member's details view
-    function view($id = 0, $tab = "") {
-        if ($id * 1) {
-
-            //if team member's list is disabled, but the user can see his/her own profile.
+    public function view($id = 0, $tab = "")
+    {
+        if ($id) {
             if (!$this->can_view_team_members_list() && $this->login_user->id != $id) {
-                redirect("forbidden");
+                return redirect()->to('forbidden');
             }
 
+            $user_info = $this->usersModel->getDetails(['id' => $id, 'user_type' => 'staff'])->getRow();
 
-
-            //we have an id. view the team_member's profie
-            $options = array("id" => $id, "user_type" => "staff");
-            $user_info = $this->Users_model->get_details($options)->row();
             if ($user_info) {
-
-                //check which tabs are viewable for current logged in user
-                $view_data['show_timeline'] = get_setting("module_timeline") ? true : false;
-
-                $can_update_team_members_info = $this->can_update_team_members_info($id);
-
-                $view_data['show_general_info'] = $can_update_team_members_info;
-                $view_data['show_job_info'] = false;
-
-                $view_data['show_account_settings'] = false;
+                $view_data = [
+                    'show_timeline' => get_setting("module_timeline") ? true : false,
+                    'show_general_info' => $this->can_update_team_members_info($id),
+                    'show_job_info' => false,
+                    'show_account_settings' => false,
+                    'show_expense_info' => get_setting("module_expense") == "1" && $this->get_access_info("expense")->access_type == "all"
+                ];
 
                 $show_attendance = false;
                 $show_leave = false;
                 $show_payslip = false;
                 $show_bank_statement = false;
-                $expense_access_info = $this->get_access_info("expense");
-                $view_data["show_expense_info"] = (get_setting("module_expense") == "1" && $expense_access_info->access_type == "all") ? true : false;
-
-                //admin can access all members attendance and leave
-                //none admin users can only access to his/her own information 
 
                 if ($this->login_user->is_admin || $user_info->id === $this->login_user->id) {
                     $show_attendance = true;
                     $show_leave = true;
                     $show_payslip = true;
                     $access_bank_statement = $this->get_access_info("bank_statement");
-                    if ($access_bank_statement->access_type === "all"|| in_array($this->login_user->id, $access_bank_statement->allowed_members)) {
-                    $show_bank_statement = true;
-                }
+                    if ($access_bank_statement->access_type === "all" || in_array($this->login_user->id, $access_bank_statement->allowed_members)) {
+                        $show_bank_statement = true;
+                    }
                     $view_data['show_job_info'] = true;
                     $view_data['show_account_settings'] = true;
                 } else {
-                    //none admin users but who has access to this team member's attendance and leave can access this info
                     $access_timecard = $this->get_access_info("attendance");
                     if ($access_timecard->access_type === "all" || in_array($user_info->id, $access_timecard->allowed_members)) {
                         $show_attendance = true;
@@ -468,664 +516,654 @@ if(!$this->login_user->is_admin){
 
                     $access_payslip = $this->get_access_info("payslip");
                     if ($access_payslip->access_type === "all" || in_array($user_info->id, $access_payslip->allowed_members)) {
-                        $show_payslip = true; 
+                        $show_payslip = true;
                     }
-                  /*  $access_bank_statement = $this->get_access_info("bank_statement");
-                    if ($access_bank_statement->access_type === "all"|| in_array($user_info->id, $access_bank_statement->allowed_members)) {
-                        $show_bank_statement = true;
-                    } */
                 }
 
-
-                //check module availability
                 $view_data['show_attendance'] = $show_attendance && get_setting("module_attendance") ? true : false;
                 $view_data['show_leave'] = $show_leave && get_setting("module_leave") ? true : false;
                 $view_data['show_payslip'] = $show_payslip && get_setting("module_payslip") ? true : false;
 
-
-                //check contact info view permissions
-                $show_cotact_info = $this->can_view_team_members_contact_info();
+                $show_contact_info = $this->can_view_team_members_contact_info();
                 $show_social_links = $this->can_view_team_members_social_links();
 
-                //own info is always visible
                 if ($id == $this->login_user->id) {
-                    $show_cotact_info = true;
+                    $show_contact_info = true;
                     $show_social_links = true;
                 }
-           $view_data['show_bank_statement'] = $show_bank_statement;
-                $view_data['show_cotact_info'] = $show_cotact_info;
+
+                $view_data['show_bank_statement'] = $show_bank_statement;
+                $view_data['show_contact_info'] = $show_contact_info;
                 $view_data['show_social_links'] = $show_social_links;
-
-
-                //show projects tab to admin
-                $view_data['show_projects'] = false;
-                if ($this->login_user->is_admin) {
-                    $view_data['show_projects'] = true;
-                }
-
-
-                $view_data['tab'] = $tab; //selected tab
+                $view_data['show_projects'] = $this->login_user->is_admin;
+                $view_data['tab'] = $tab;
                 $view_data['user_info'] = $user_info;
-                $view_data['social_link'] = $this->Social_links_model->get_one($id);
-                $this->template->rander("team_members/view", $view_data);
+                $view_data['social_link'] = $this->socialLinksModel->find($id);
+
+                return view('team_members/view', $view_data);
             } else {
-                show_404();
+                throw new \CodeIgniter\Exceptions\PageNotFoundException();
             }
         } else {
-
             if (!$this->can_view_team_members_list()) {
-                redirect("forbidden");
+                return redirect()->to('forbidden');
             }
 
-            //we don't have any specific id to view. show the list of team_member
-            $view_data['team_members'] = $this->Users_model->get_details(array("user_type" => "staff", "status" => "active"))->result();
-            $this->template->rander("team_members/profile_card", $view_data);
+            $view_data['team_members'] = $this->usersModel->getDetails(['user_type' => 'staff', 'status' => 'active'])->getResult();
+            return view('team_members/profile_card', $view_data);
         }
     }
-
-    //show the job information of a team member
-    function job_info($user_id) {
-        $this->only_admin_or_own($user_id);
-
-        $options = array("id" => $user_id);
-        $user_info = $this->Users_model->get_details($options)->row();
-
-        $view_data['user_id'] = $user_id;
-        $view_data['job_info'] = $this->Users_model->get_job_info($user_id);
-        $view_data['job_info']->job_title = $user_info->job_title;
-        
-        //user role and department countey ,branches,desgination
-         $view_data['user_info'] = $user_info;
-        $view_data['company_dropdown'] = $this->_get_companies_dropdown();
-         $view_data['country_dropdown'] = array("" => "-")+$this->_get_countries_dropdown();
-
-        //$view_data['designation_dropdown'] = $this->_get_designation_dropdown();
-        $view_data['department_dropdown'] = array("" => "-") +$this->_get_department_dropdown();
-        
-        // branch dropdown
-        $company_branch = $this->Branches_model->get_all_where(array("deleted" => 0,"company_name"=>$view_data['user_info']->company_id))->result();
-        
-        $company_branch_dropdown = array(array("id" => "", "text" => "-"));
-        foreach ($company_branch as $branch) {
-            $company_branch_dropdown[] = array("id" => $branch->branch_code, "text" =>$branch->title );
-        }
-         $view_data['company_branch_dropdown'] = json_encode($company_branch_dropdown);
-
-         //designation dropdown  
-        $designation_dropdown = array(array("id" => "", "text" => "-"));
-        $designations = $this->Designation_model->get_all_where(array("deleted" => 0,"department_code"=>$view_data['user_info']->department))->result();
-        foreach ($designations as $designation) {
-            $designation_dropdown[] = array("id" => $designation->designation_code, "text" =>$designation->title );
-        }
-         $view_data['designation_dropdown'] = json_encode($designation_dropdown);
-
-          //annual dropdown  
-        $annual_leave_dropdown = array();
-        $no_annual_dropdown = range(1,365);
-        foreach ($no_annual_dropdown  as $key => $value) {
-         $annual_leave_dropdown[$value] = $value;
-        }
-        $view_data['annual_leave_dropdown'] = $annual_leave_dropdown;
-
-        $this->load->view("team_members/job_info", $view_data);
-    }
+      //show the job information of a team member
+      public function job_info($user_id)
+      {
+          $this->only_admin_or_own($user_id);
+  
+          $user_info = $this->usersModel->getDetails(['id' => $user_id])->getRow();
+  
+          $view_data = [
+              'user_id' => $user_id,
+              'job_info' => $this->usersModel->getJobInfo($user_id),
+              'user_info' => $user_info,
+              'company_dropdown' => $this->_get_companies_dropdown(),
+              'country_dropdown' => [""] + $this->_get_countries_dropdown(),
+              'department_dropdown' => [""] + $this->_get_department_dropdown(),
+          ];
+          $view_data['job_info']->job_title = $user_info->job_title;
+  
+          $company_branch = $this->branchesModel->where(['deleted' => 0, 'company_name' => $view_data['user_info']->company_id])->findAll();
+          $company_branch_dropdown = [['id' => "", 'text' => "-"]];
+          foreach ($company_branch as $branch) {
+              $company_branch_dropdown[] = ['id' => $branch['branch_code'], 'text' => $branch['title']];
+          }
+          $view_data['company_branch_dropdown'] = json_encode($company_branch_dropdown);
+  
+          $designation_dropdown = [['id' => "", 'text' => "-"]];
+          $designations = $this->designationModel->where(['deleted' => 0, 'department_code' => $view_data['user_info']->department])->findAll();
+          foreach ($designations as $designation) {
+              $designation_dropdown[] = ['id' => $designation['designation_code'], 'text' => $designation['title']];
+          }
+          $view_data['designation_dropdown'] = json_encode($designation_dropdown);
+  
+          $annual_leave_dropdown = array_combine(range(1, 365), range(1, 365));
+          $view_data['annual_leave_dropdown'] = $annual_leave_dropdown;
+  
+          return view('team_members/job_info', $view_data);
+      }
 
     //save job information of a team member
-    function save_job_info() {
+   
+    public function save_job_info()
+    {
         $this->access_only_admin();
 
-        validate_submitted_data(array(
-            "user_id" => "required|numeric"
-        ));
+        $rules = [
+            'user_id' => 'required|numeric'
+        ];
 
-        $user_id = $this->input->post('user_id');
+        if (!$this->validate($rules)) {
+            return $this->response->setJSON(['success' => false, 'message' => $this->validator->getErrors()]);
+        }
 
-        $job_data = array(
-            "user_id" => $user_id,
-            "salary" => unformat_currency($this->input->post('salary')),
-            "salary_term" => $this->input->post('salary_term'),
-            "date_of_hire" => $this->input->post('date_of_hire'),
-            "currency_symbol" => $this->input->post('currency_symbol'),
-             "currency" => $this->input->post('currency')
+        $user_id = $this->request->getPost('user_id');
 
-        );
+        $job_data = [
+            'user_id' => $user_id,
+            'salary' => unformat_currency($this->request->getPost('salary')),
+            'salary_term' => $this->request->getPost('salary_term'),
+            'date_of_hire' => $this->request->getPost('date_of_hire'),
+            'currency_symbol' => $this->request->getPost('currency_symbol'),
+            'currency' => $this->request->getPost('currency'),
+        ];
 
-        //we'll save the job title in users table
-        $user_data = array(
-            "job_title" => $this->input->post('job_title'),
-            "country" => $this->input->post('country'),
-            "department" => $this->input->post('department'),
-            "designation" => $this->input->post('designation'),
-            "branch" => $this->input->post('branch'),
-            "annual_leave" => $this->input->post('annual_leave'),
-            "buid" => $this->input->post('buid'),
-            "company_id" => $this->input->post('company_id'),
-        );
+        $user_data = [
+            'job_title' => $this->request->getPost('job_title'),
+            'country' => $this->request->getPost('country'),
+            'department' => $this->request->getPost('department'),
+            'designation' => $this->request->getPost('designation'),
+            'branch' => $this->request->getPost('branch'),
+            'annual_leave' => $this->request->getPost('annual_leave'),
+            'buid' => $this->request->getPost('buid'),
+            'company_id' => $this->request->getPost('company_id'),
+        ];
 
-        $this->Users_model->save($user_data, $user_id);
-        if ($this->Users_model->save_job_info($job_data)) {
-            echo json_encode(array("success" => true, 'message' => lang('record_updated')));
+        $this->usersModel->update($user_id, $user_data);
+        if ($this->usersModel->saveJobInfo($job_data)) {
+            return $this->response->setJSON(['success' => true, 'message' => lang('record_updated')]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('error_occurred')));
+            return $this->response->setJSON(['success' => false, 'message' => lang('error_occurred')]);
         }
     }
 
-    //show general information of a team member
-    function general_info($user_id) {
+
+    public function general_info($user_id)
+    {
         $this->update_only_allowed_members($user_id);
 
-        $view_data['user_info'] = $this->Users_model->get_one($user_id);
-        $view_data["custom_fields"] = $this->Custom_fields_model->get_combined_details("team_members", $user_id, $this->login_user->is_admin, $this->login_user->user_type)->result();
+        $view_data['user_info'] = $this->usersModel->find($user_id);
+        $view_data['custom_fields'] = $this->customFieldsModel->get_combined_details('team_members', $user_id, $this->login_user->is_admin, $this->login_user->user_type)->getResult();
 
-        $this->load->view("team_members/general_info", $view_data);
+        return view('team_members/general_info', $view_data);
     }
-
-    //save general information of a team member
-    function save_general_info($user_id) {
+    public function save_general_info($user_id)
+    {
         $this->update_only_allowed_members($user_id);
 
-        validate_submitted_data(array(
-            "first_name" => "required",
-            "last_name" => "required"
-        ));
-         
-         // check personal mail
-         if ($this->input->post('personal_email') && $this->Users_model->is_personal_email_exists($this->input->post('personal_email'), $user_id)) {
-            echo json_encode(array("success" => false, 'message' => lang('duplicate_email')));
-            exit();
+        $rules = [
+            'first_name' => 'required',
+            'last_name' => 'required',
+        ];
+
+        if (!$this->validate($rules)) {
+            return $this->response->setJSON(['success' => false, 'message' => $this->validator->getErrors()]);
         }
 
-        $sign = str_replace("~", ":",  $this->input->post("file_names"));
-$sign=move_temp_file($sign["0"], get_setting("profile_image_path").'/signature/', "", NULL, $user_id.'.jpg');            
-        $user_data = array(
-            "first_name" => $this->input->post('first_name'),
-            "last_name" => $this->input->post('last_name'),
-            "address" => $this->input->post('address'),
-            "phone" => $this->input->post('phone'),
-            "skype" => $this->input->post('skype'),
-            "gender" => $this->input->post('gender'),
-            "alternative_address" => $this->input->post('alternative_address'),
-            "alternative_phone" => $this->input->post('alternative_phone'),
-            "dob" => $this->input->post('dob'),
-            "ssn" => $this->input->post('ssn'),
-            "blood_group" => $this->input->post('blood_group'),
-            "personal_email" => $this->input->post('personal_email'),
-            "signature" =>$sign
+        // Check personal email
+        if ($this->request->getPost('personal_email') && $this->usersModel->is_personal_email_exists($this->request->getPost('personal_email'), $user_id)) {
+            return $this->response->setJSON(['success' => false, 'message' => lang('duplicate_email')]);
+        }
 
-        );
+        $sign = str_replace("~", ":", $this->request->getPost('file_names'));
+        $sign = move_temp_file($sign[0], get_setting('profile_image_path') . '/signature/', '', null, $user_id . '.jpg');
+
+        $user_data = [
+            'first_name' => $this->request->getPost('first_name'),
+            'last_name' => $this->request->getPost('last_name'),
+            'address' => $this->request->getPost('address'),
+            'phone' => $this->request->getPost('phone'),
+            'skype' => $this->request->getPost('skype'),
+            'gender' => $this->request->getPost('gender'),
+            'alternative_address' => $this->request->getPost('alternative_address'),
+            'alternative_phone' => $this->request->getPost('alternative_phone'),
+            'dob' => $this->request->getPost('dob'),
+            'ssn' => $this->request->getPost('ssn'),
+            'blood_group' => $this->request->getPost('blood_group'),
+            'personal_email' => $this->request->getPost('personal_email'),
+            'signature' => $sign
+        ];
         $user_data = clean_data($user_data);
 
-        $user_info_updated = $this->Users_model->save($user_data, $user_id);
+        $user_info_updated = $this->usersModel->update($user_id, $user_data);
 
-        save_custom_fields("team_members", $user_id, $this->login_user->is_admin, $this->login_user->user_type);
+        save_custom_fields('team_members', $user_id, $this->login_user->is_admin, $this->login_user->user_type);
 
         if ($user_info_updated) {
-            echo json_encode(array("success" => true, 'message' => lang('record_updated')));
+            return $this->response->setJSON(['success' => true, 'message' => lang('record_updated')]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('error_occurred')));
+            return $this->response->setJSON(['success' => false, 'message' => lang('error_occurred')]);
         }
     }
-
-    //show social links of a team member
-    function social_links($user_id) {
-        //important! here id=user_id
-        $this->update_only_allowed_members($user_id);
-
-        $view_data['user_id'] = $user_id;
-        $view_data['model_info'] = $this->Social_links_model->get_one($user_id);
-        $this->load->view("users/social_links", $view_data);
-    }
-
-    //save social links of a team member
-    function save_social_links($user_id) {
-        $this->update_only_allowed_members($user_id);
-
-        $id = 0;
-        $has_social_links = $this->Social_links_model->get_one($user_id);
-        if (isset($has_social_links->id)) {
-            $id = $has_social_links->id;
-        }
-
-        $social_link_data = array(
-            "facebook" => $this->input->post('facebook'),
-            "twitter" => $this->input->post('twitter'),
-            "linkedin" => $this->input->post('linkedin'),
-            "googleplus" => $this->input->post('googleplus'),
-            "digg" => $this->input->post('digg'),
-            "youtube" => $this->input->post('youtube'),
-            "pinterest" => $this->input->post('pinterest'),
-            "instagram" => $this->input->post('instagram'),
-            "github" => $this->input->post('github'),
-            "tumblr" => $this->input->post('tumblr'),
-            "vine" => $this->input->post('vine'),
-            "user_id" => $user_id,
-            "id" => $id ? $id : $user_id
-        );
-
-        $social_link_data = clean_data($social_link_data);
-
-        $this->Social_links_model->save($social_link_data, $id);
-        echo json_encode(array("success" => true, 'message' => lang('record_updated')));
-    }
-
     //kycinfo
-    function kyc_info($user_id) {
-        //important! here id=user_id
+    public function kyc_info($user_id)
+    {
         $this->update_only_allowed_members($user_id);
 
-        $view_data['user_id'] = $user_id;
-        $view_data['model_info'] = $this->Kyc_info_model->get_one($user_id);
-        $this->load->view("users/kyc_info", $view_data);
+        $view_data = [
+            'user_id' => $user_id,
+            'model_info' => $this->kycInfoModel->find($user_id)
+        ];
+
+        return view('users/kyc_info', $view_data);
     }
 
     //save social links of a team member
-    function save_kyc_info($user_id) {
+    public function save_kyc_info($user_id)
+    {
         $this->update_only_allowed_members($user_id);
 
         $id = 0;
-        $has_kyc_info = $this->Kyc_info_model->get_one($user_id);
-        if (isset($has_kyc_info->id)) {
-            $id = $has_kyc_info->id;
+        $has_kyc_info = $this->kycInfoModel->find($user_id);
+        if ($has_kyc_info) {
+            $id = $has_kyc_info['id'];
         }
 
-        $kyc_info_data = array(
-            "aadhar_no" => $this->input->post('aadhar_no'),
-            "passportno" => $this->input->post('passportno'),
-            "drivinglicenseno" => $this->input->post('drivinglicenseno'),
-            "panno" => $this->input->post('panno'),
-            "voterid" => $this->input->post('voterid'),
-            "name" => $this->input->post('name'),
-            "accountnumber" => $this->input->post('accountnumber'),
-            "bankname" => $this->input->post('bankname'),
-            "branch" => $this->input->post('branch'),
-            "ifsc" => $this->input->post('ifsc'),
-            "micr" => $this->input->post('micr'),
-            "epf_no" => $this->input->post('epf_no'),
-            "uan_no" => $this->input->post('uan_no'),
-            "swift_code" => $this->input->post('swift_code'),
-            "iban_code" => $this->input->post('iban_code'),
-            "user_id" => $user_id,
-            "id" => $id ? $id : $user_id
-        );
+        $kyc_info_data = [
+            'aadhar_no' => $this->request->getPost('aadhar_no'),
+            'passportno' => $this->request->getPost('passportno'),
+            'drivinglicenseno' => $this->request->getPost('drivinglicenseno'),
+            'panno' => $this->request->getPost('panno'),
+            'voterid' => $this->request->getPost('voterid'),
+            'name' => $this->request->getPost('name'),
+            'accountnumber' => $this->request->getPost('accountnumber'),
+            'bankname' => $this->request->getPost('bankname'),
+            'branch' => $this->request->getPost('branch'),
+            'ifsc' => $this->request->getPost('ifsc'),
+            'micr' => $this->request->getPost('micr'),
+            'epf_no' => $this->request->getPost('epf_no'),
+            'uan_no' => $this->request->getPost('uan_no'),
+            'swift_code' => $this->request->getPost('swift_code'),
+            'iban_code' => $this->request->getPost('iban_code'),
+            'user_id' => $user_id,
+            'id' => $id ?: $user_id
+        ];
 
         $kyc_info_data = clean_data($kyc_info_data);
 
-        $this->Kyc_info_model->save($kyc_info_data, $id);
-        echo json_encode(array("success" => true, 'message' => lang('record_updated')));
+        $this->kycInfoModel->save($kyc_info_data);
+
+        return $this->response->setJSON(['success' => true, 'message' => lang('record_updated')]);
     }
 
-    private function _get_line_manager_dropdown() {
-        $post_dropdown = array(
-            //"0" => lang('team_member'),
-            //"admin" => lang('admin') //static role
-        );
-        $options = array("user_type" => "staff","status"=>'active');
-        $line_managers = $this->Users_model->get_details($options)->result();
+    private function _get_line_manager_dropdown()
+    {
+        $post_dropdown = [
+            // '0' => lang('team_member'),  // Commented out as it was not active in the original method
+            // 'admin' => lang('admin')    // Commented out as it was not active in the original method
+        ];
+        
+        $options = ['user_type' => 'staff', 'status' => 'active'];
+        $line_managers = $this->usersModel->where($options)->findAll();
+
         foreach ($line_managers as $line_manager) {
-            $post_dropdown[$line_manager->id] = $line_manager->first_name." ".$line_manager->last_name;
+            $post_dropdown[$line_manager['id']] = $line_manager['first_name'] . ' ' . $line_manager['last_name'];
         }
+
         return $post_dropdown;
     }
+
     //show account settings of a team member
-    function account_settings($user_id) {
+    public function account_settings($user_id)
+    {
         $this->only_admin_or_own($user_id);
 
-        $view_data['user_info'] = $this->Users_model->get_one($user_id);
-        if ($view_data['user_info']->is_admin) {
-            $view_data['user_info']->role_id = "admin";
-        }
-        $view_data['role_dropdown'] = $this->_get_roles_dropdown();
+        $view_data = [
+            'user_info' => $this->usersModel->find($user_id),
+            'role_dropdown' => $this->_get_roles_dropdown(),
+            'line_manager' => ['' => '-'] + ['admin' => 'Admin'] + $this->_get_line_manager_dropdown()
+        ];
 
-        $view_data['line_manager'] = array("" => "-") +array("admin" => "Admin") +$this->_get_line_manager_dropdown();    
-
-        $this->load->view("users/account_settings", $view_data);
+        return view('users/account_settings', $view_data);
     }
-
-    //show my preference settings of a team member
-    function my_preferences() {
-        $view_data["user_info"] = $this->Users_model->get_one($this->login_user->id);
-
-        $view_data['language_dropdown'] = array();
+    public function my_preferences()
+    {
+        $view_data = [
+            'user_info' => $this->usersModel->find($this->login_user->id),
+            'language_dropdown' => [],
+            'timezone_dropdown' => array_combine(DateTimeZone::listIdentifiers(DateTimeZone::ALL), DateTimeZone::listIdentifiers(DateTimeZone::ALL)),
+            'hidden_topbar_menus_dropdown' => $this->get_hidden_topbar_menus_dropdown()
+        ];
 
         if (!get_setting("disable_language_selector_for_team_members")) {
-           $view_data['language_dropdown'] = get_language_list();
+            $view_data['language_dropdown'] = get_language_list();
         }
-        
-        //user timezone  dropdown 
-        $tzlist = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
-        $view_data['timezone_dropdown'] = array();
-        foreach ($tzlist as $zone) {
-            $view_data['timezone_dropdown'][$zone] = $zone;
-        }
-        $view_data["hidden_topbar_menus_dropdown"] = $this->get_hidden_topbar_menus_dropdown();
 
-        $this->load->view("team_members/my_preferences", $view_data);
+        return view('team_members/my_preferences', $view_data);
     }
 
-    function save_my_preferences() {
-        //setting preferences
-        $settings = array("notification_sound_volume","hidden_topbar_menus", "disable_keyboard_shortcuts");
-        
+    public function save_my_preferences()
+    {
+        $settings = ['notification_sound_volume', 'hidden_topbar_menus', 'disable_keyboard_shortcuts'];
+
         if (!get_setting("disable_language_selector_for_team_members")) {
-            array_push($settings, "personal_language");
+            $settings[] = 'personal_language';
         }
 
         foreach ($settings as $setting) {
-            $value = $this->input->post($setting);
-            // if ($value || $value === "0") {
-
-            //     $value = clean_data($value);
+            $value = $this->request->getPost($setting);
 
             if (is_null($value)) {
                 $value = "";
             }
 
-                $this->Settings_model->save_setting("user_" . $this->login_user->id . "_" . $setting, $value, "user");
-            //}
+            $this->settingsModel->save_setting("user_{$this->login_user->id}_{$setting}", $value, "user");
         }
 
-        //there was 2 settings in users table.
-        //so, update the users table also
+        $user_data = [
+            "enable_web_notification" => $this->request->getPost("enable_web_notification"),
+            "enable_email_notification" => $this->request->getPost("enable_email_notification"),
+            "user_timezone" => $this->request->getPost("user_timezone"),
+        ];
 
+        $this->usersModel->save($user_data, $this->login_user->id);
 
-        $user_data = array(
-            "enable_web_notification" => $this->input->post("enable_web_notification"),
-            "enable_email_notification" => $this->input->post("enable_email_notification"),
-            "user_timezone" => $this->input->post("user_timezone"),
-        );
-
-        $user_data = clean_data($user_data);
-
-        $this->Users_model->save($user_data, $this->login_user->id);
-
-        echo json_encode(array("success" => true, 'message' => lang('settings_updated')));
+        return $this->response->setJSON(['success' => true, 'message' => lang('settings_updated')]);
     }
 
-    function save_personal_language($language) {
+    public function save_personal_language($language)
+    {
         if (!get_setting("disable_language_selector_for_team_members") && ($language || $language === "0")) {
-
             $language = clean_data($language);
-
-            $this->Settings_model->save_setting("user_" . $this->login_user->id . "_personal_language", strtolower($language), "user");
+            $this->settingsModel->save_setting("user_{$this->login_user->id}_personal_language", strtolower($language), "user");
         }
     }
-
     //prepare the dropdown list of roles
-    private function _get_roles_dropdown() {
-        $role_dropdown = array(
+    private function _get_roles_dropdown()
+    {
+        $role_dropdown = [
             "0" => lang('team_member'),
             "admin" => lang('admin') //static role
-        );
-        $roles = $this->Roles_model->get_details()->result();
+        ];
+
+        $roles = $this->rolesModel->findAll();
         foreach ($roles as $role) {
-            $role_dropdown[$role->id] = $role->title;
+            $role_dropdown[$role['id']] = $role['title'];
         }
+
         return $role_dropdown;
     }
- private function _get_countries_dropdown() {
-        $country_dropdown = array(
+    private function _get_countries_dropdown()
+    {
+        $country_dropdown = [
             //"0" => lang('team_member'),
             //"admin" => lang('admin') //static role
-        );
-        $countries = $this->Countries_model->get_details()->result();
+        ];
+
+        $countries = $this->countriesModel->findAll();
         foreach ($countries as $country) {
-            $country_dropdown[$country->numberCode] = $country->countryName;
+            $country_dropdown[$country['numberCode']] = $country['countryName'];
         }
+
         return $country_dropdown;
     }
- private function _get_companies_dropdown() {
-        $company_dropdown = array(
+    private function _get_companies_dropdown()
+    {
+        $company_dropdown = [
             "" => "--Select the Employer--",
             //"admin" => lang('admin') //static role
-        );
-        $countries = $this->Companys_model->get_details()->result();
+        ];
+
+        $countries = $this->companysModel->findAll();
         foreach ($countries as $country) {
-            $company_dropdown[$country->cr_id] = $country->company_name;
+            $company_dropdown[$country['cr_id']] = $country['company_name'];
         }
+
         return $company_dropdown;
     }
-  private function _get_branches_dropdown() {
-        $branches_dropdown = array(
+    private function _get_branches_dropdown()
+    {
+        $branches_dropdown = [
             //"0" => lang('team_member'),
             //"admin" => lang('admin') //static role
-        );
-        $branches = $this->Branches_model->get_details()->result();
+        ];
+
+        $branches = $this->branchesModel->findAll();
         foreach ($branches as $branch) {
-            $branches_dropdown[$branch->branch_code] = $branch->title;
+            $branches_dropdown[$branch['branch_code']] = $branch['title'];
         }
+
         return $branches_dropdown;
     }
-  private function _get_branchess_dropdown($company_name) {
-        $branches_dropdown = array(
+
+    private function _get_branchess_dropdown($company_name)
+    {
+        $branches_dropdown = [
             //"0" => lang('team_member'),
             //"admin" => lang('admin') //static role
-        );
-        $options=array("company_name"=>'cr001');
-        $branches = $this->Branches_model->get_details($options)->result();
+        ];
+
+        $options = ["company_name" => 'cr001'];
+        $branches = $this->branchesModel->where($options)->findAll();
         foreach ($branches as $branch) {
-            $branches_dropdown[$branch->branch_code] = $branch->title;
+            $branches_dropdown[$branch['branch_code']] = $branch['title'];
         }
+
         return $branches_dropdown;
-    }    private function _get_designation_dropdown() {
-        $designation_dropdown = array(
+    }
+    private function _get_designation_dropdown()
+    {
+        $designation_dropdown = [
             //"0" => lang('team_member'),
             //"admin" => lang('admin') //static role
-        );
-        $designations = $this->Designation_model->get_details()->result();
+        ];
+
+        $designations = $this->designationModel->findAll();
         foreach ($designations as $designation) {
-            $designation_dropdown[$designation->designation_code] = $designation->title;
+            $designation_dropdown[$designation['designation_code']] = $designation['title'];
         }
+
         return $designation_dropdown;
     }
-    private function _get_department_dropdown() {
-        $department_dropdown = array(
+    private function _get_department_dropdown()
+    {
+        $department_dropdown = [
             //"0" => lang('team_member'),
             //"admin" => lang('admin') //static role
-        );
-        $departments = $this->Department_model->get_details()->result();
+        ];
+
+        $departments = $this->departmentModel->findAll();
         foreach ($departments as $department) {
-            $department_dropdown[$department->department_code] = $department->title;
+            $department_dropdown[$department['department_code']] = $department['title'];
         }
+
         return $department_dropdown;
     }
-     //save account settings of a team member
-    function save_account_settings($user_id) {
-        $this->only_admin_or_own($user_id);
 
-        if ($this->Users_model->is_email_exists($this->input->post('email'), $user_id)) {
-            echo json_encode(array("success" => false, 'message' => lang('duplicate_email')));
-            exit();
-        }
-        $account_data = array(
-            "email" => $this->input->post('email')
-        );
+public function save_account_settings($user_id)
+{
+    $this->only_admin_or_own($user_id);
 
-        if ($this->login_user->is_admin && $this->login_user->id != $user_id) {
-            //only admin user has permission to update team member's role
-            //but admin user can't update his/her own role 
-            $role = $this->input->post('role');
-            $role_id = $role;
-
-            if ($role === "admin") {
-                $account_data["is_admin"] = 1;
-                $account_data["role_id"] = 0;
-            } else {
-                $account_data["is_admin"] = 0;
-                $account_data["role_id"] = $role_id;
-            }
-      $account_data['work_mode'] = $this->input->post('work_mode');
-            $account_data['disable_login'] = $this->input->post('disable_login');
-            $account_data['status'] = $this->input->post('status') === "inactive" ? "inactive" : "active";
-       }
-       $account_data['line_manager'] = $this->input->post('line_manager');
-
-        //don't reset password if user doesn't entered any password
-        if ($this->input->post('password')) {
-            $account_data['password'] = md5($this->input->post('password'));
-        }
-
-        if ($this->Users_model->save($account_data, $user_id)) {
-            echo json_encode(array("success" => true, 'message' => lang('record_updated')));
-        } else {
-            echo json_encode(array("success" => false, 'message' => lang('error_occurred')));
-        }
+    if ($this->UsersModel->isEmailExists($this->request->getPost('email'), $user_id)) {
+        return $this->response->setJSON([
+            "success" => false,
+            'message' => lang('duplicate_email')
+        ]);
     }
 
-    //save profile image of a team member
-    function save_profile_image($user_id = 0) {
+    $account_data = [
+        "email" => $this->request->getPost('email')
+    ];
+
+    if ($this->currentUser->isAdmin && $this->currentUser->id != $user_id) {
+        // Admin can update team member's role
+        $role = $this->request->getPost('role');
+        $role_id = $role;
+
+        if ($role === "admin") {
+            $account_data["is_admin"] = 1;
+            $account_data["role_id"] = 0;
+        } else {
+            $account_data["is_admin"] = 0;
+            $account_data["role_id"] = $role_id;
+        }
+
+        $account_data['work_mode'] = $this->request->getPost('work_mode');
+        $account_data['disable_login'] = $this->request->getPost('disable_login');
+        $account_data['status'] = $this->request->getPost('status') === "inactive" ? "inactive" : "active";
+    }
+
+    $account_data['line_manager'] = $this->request->getPost('line_manager');
+
+    // Update password if provided
+    $password = $this->request->getPost('password');
+    if ($password) {
+        $account_data['password'] = md5($password);
+    }
+
+    // Save account settings
+    if ($this->UsersModel->save($account_data, $user_id)) {
+        return $this->response->setJSON([
+            "success" => true,
+            'message' => lang('record_updated')
+        ]);
+    } else {
+        return $this->response->setJSON([
+            "success" => false,
+            'message' => lang('error_occurred')
+        ]);
+    }
+}
+
+    public function save_profile_image($user_id = 0)
+    {
         $this->update_only_allowed_members($user_id);
 
-        //process the the file which has uploaded by dropzone
-        $profile_image = str_replace("~", ":", $this->input->post("profile_image"));
+        // Process uploaded file from dropzone
+        $profile_image = str_replace("~", ":", $this->request->getPost("profile_image"));
 
         if ($profile_image) {
             $profile_image = move_temp_file("avatar.png", get_setting("profile_image_path"), "", $profile_image);
 
-            $image_data = array("image" => $profile_image);
+            $image_data = ["image" => $profile_image];
 
             $this->Users_model->save($image_data, $user_id);
-            echo json_encode(array("success" => true, 'message' => lang('profile_image_changed')));
+            return $this->respond(["success" => true, 'message' => lang('profile_image_changed')]);
         }
 
-        //process the the file which has uploaded using manual file submit
-        if ($_FILES) {
-            $profile_image_file = get_array_value($_FILES, "profile_image_file");
-            $image_file_name = get_array_value($profile_image_file, "tmp_name");
+        // Process file uploaded using manual file submit
+        $profile_image_file = $this->request->getFiles('profile_image_file');
+        if ($profile_image_file) {
+            $image_file_name = $profile_image_file->getTempName();
             if ($image_file_name) {
                 $profile_image = move_temp_file("avatar.png", get_setting("profile_image_path"), "", $image_file_name);
-                $image_data = array("image" => $profile_image);
+                $image_data = ["image" => $profile_image];
                 $this->Users_model->save($image_data, $user_id);
-                echo json_encode(array("success" => true, 'message' => lang('profile_image_changed')));
+                return $this->respond(["success" => true, 'message' => lang('profile_image_changed')]);
             }
         }
+
+        return $this->failValidationError('No profile image uploaded.');
     }
 
-    //show projects list of a team member
-    function projects_info($user_id) {
-        if ($user_id) {
-            $view_data['user_id'] = $user_id;
-            $view_data["custom_field_headers"] = $this->Custom_fields_model->get_custom_field_headers_for_table("projects", $this->login_user->is_admin, $this->login_user->user_type);
-            $this->load->view("team_members/projects_info", $view_data);
+    public function projectsInfo($userId)
+    {
+        if ($userId) {
+            $data = [
+                'userId' => $userId,
+                'customFieldHeaders' => $this->CustomFieldsModel->getCustomFieldHeadersForTable("projects", $this->loggedInUser->isAdmin, $this->loggedInUser->userType)
+            ];
+            return view("team_members/projects_info", $data);
         }
     }
+
 
     //show attendance list of a team member
-    function attendance_info($user_id) {
-        if ($user_id) {
-            $view_data['user_id'] = $user_id;
-            $this->load->view("team_members/attendance_info", $view_data);
+    public function attendanceInfo($userId)
+    {
+        if ($userId) {
+            $data = ['userId' => $userId];
+            return view("team_members/attendance_info", $data);
         }
     }
 
+
     //show weekly attendance list of a team member
-    function weekly_attendance() {
-        $this->load->view("team_members/weekly_attendance");
+    public function weeklyAttendance()
+    {
+        return view("team_members/weekly_attendance");
     }
 
     //show weekly attendance list of a team member
-    function custom_range_attendance() {
-        $this->load->view("team_members/custom_range_attendance");
+    public function customRangeAttendance()
+    {
+        return view("team_members/custom_range_attendance");
     }
 
     //show attendance summary of a team member
-    function attendance_summary($user_id) {
-        $view_data["user_id"] = $user_id;
-        $this->load->view("team_members/attendance_summary", $view_data);
+    public function attendanceSummary($userId)
+    {
+        $data = ['userId' => $userId];
+        return view("team_members/attendance_summary", $data);
     }
 
+
     //show leave list of a team member
-    function leave_info($applicant_id) {
-        if ($applicant_id) {
-            $view_data['applicant_id'] = $applicant_id;
-            $this->load->view("team_members/leave_info", $view_data);
+    public function leaveInfo($applicantId)
+    {
+        if ($applicantId) {
+            $data = ['applicantId' => $applicantId];
+            return view("team_members/leave_info", $data);
         }
     }
 
+
     //show yearly leave list of a team member
-    function yearly_leaves() {
-        $this->load->view("team_members/yearly_leaves");
+    public function yearlyLeaves()
+    {
+        return view("team_members/yearly_leaves");
     }
- 
+
     //show yearly leave list of a team member
-    function expense_info($user_id) {
-        $view_data["user_id"] = $user_id;
-        $this->load->view("team_members/expenses", $view_data);
+    public function expenseInfo($userId)
+    {
+        $data = ['userId' => $userId];
+        return view("team_members/expenses", $data);
     }
+
 //show monthly payslip list of a team member
-    function payslip_info($user_id) {
-         if ($user_id) {
-        $view_data["user_id"] = $user_id;
-        $this->load->view("team_members/payslip_info", $view_data);
+public function payslipInfo($userId)
+    {
+        if ($userId) {
+            $data = ['userId' => $userId];
+            return view("team_members/payslip_info", $data);
+        }
     }
-    }
-function bank_statement_info($user_id) {
-    $view_data["user_id"] = $user_id;
-        $view_data['bank_list_dropdown'] = array("" => "-") + $this->Bank_name_model->get_dropdown_list(array("title"));
-        $this->load->view("team_members/bank_statement", $view_data);
+    public function bankStatementInfo($userId)
+    {
+        $data = [
+            'userId' => $userId,
+            'bankListDropdown' => ['' => '-'] + $this->BankNameModel->getDropdownList(['title'])
+        ];
+        return view("team_members/bank_statement", $data);
     }
     //show yearly payslip list of a team member
-    function yearly_payslip() {
-        $this->load->view("team_members/yearly_payslip");
+    public function yearlyPayslip()
+    {
+        return view("team_members/yearly_payslip");
     }
+
 
     /* load files tab */
 
-    function files($user_id) {
+    public function files($userId)
+    {
+        $this->updateOnlyAllowedMembers($userId);
 
-        $this->update_only_allowed_members($user_id);
-
-        $options = array("user_id" => $user_id);
-        $view_data['files'] = $this->General_files_model->get_details($options)->result();
-        $view_data['user_id'] = $user_id;
-        $this->load->view("team_members/files/index", $view_data);
+        $options = ['user_id' => $userId];
+        $data = [
+            'files' => $this->General_files_model->getDetails($options)->getResult(),
+            'userId' => $userId
+        ];
+        return view("team_members/files/index", $data);
     }
 
     /* file upload modal */
 
-    function file_modal_form() {
-        $view_data['model_info'] = $this->General_files_model->get_one($this->input->post('id'));
-        $user_id = $this->input->post('user_id') ? $this->input->post('user_id') : $view_data['model_info']->user_id;
+    public function fileModalForm()
+    {
+        $fileId = $this->request->getPost('id');
+        $userId = $this->request->getPost('user_id') ?: $this->General_files_model->getOne($fileId)->user_id;
 
-        $this->update_only_allowed_members($user_id);
+        $this->updateOnlyAllowedMembers($userId);
 
-        $view_data['user_id'] = $user_id;
-        $this->load->view('team_members/files/modal_form', $view_data);
+        $data = ['model_info' => $this->General_files_model->getOne($fileId), 'userId' => $userId];
+        return view('team_members/files/modal_form', $data);
     }
 
     /* save file data and move temp file to parmanent file directory */
 
-    function save_file() {
+   
+    public function saveFile()
+    {
+        $rules = [
+            'id' => 'numeric',
+            'user_id' => 'required|numeric'
+        ];
 
+        if (!$this->validate($rules)) {
+            return $this->failValidationErrors($this->validator->getErrors());
+        }
 
-        validate_submitted_data(array(
-            "id" => "numeric",
-            "user_id" => "required|numeric"
-        ));
+        $userId = $this->request->getPost('user_id');
+        $this->updateOnlyAllowedMembers($userId);
 
-        $user_id = $this->input->post('user_id');
-        $this->update_only_allowed_members($user_id);
-
-
-        $files = $this->input->post("files");
+        $files = $this->request->getPost('files');
         $success = false;
-        $now = get_current_utc_time();
+        $now = date('Y-m-d H:i:s');
 
-        $target_path = getcwd() . "/" . get_general_file_path("team_members", $user_id);
+        $targetPath = WRITEPATH . 'uploads/team_members/' . $userId . '/';
 
-        //process the fiiles which has been uploaded by dropzone
-        if ($files && get_array_value($files, 0)) {
+        if ($files && count($files) > 0) {
             foreach ($files as $file) {
-                $file_name = $this->input->post('file_name_' . $file);
-                $new_file_name = move_temp_file($file_name, $target_path);
-                if ($new_file_name) {
-                    $data = array(
-                        "user_id" => $user_id,
-                        "file_name" => $new_file_name,
-                        "description" => $this->input->post('description_' . $file),
-                        "file_size" => $this->input->post('file_size_' . $file),
-                        "created_at" => $now,
-                        "uploaded_by" => $this->login_user->id
-                    );
+                $fileName = $this->request->getPost('file_name_' . $file);
+                $newFileName = moveUploadedFile($fileName, $targetPath);
+                if ($newFileName) {
+                    $data = [
+                        'user_id' => $userId,
+                        'file_name' => $newFileName,
+                        'description' => $this->request->getPost('description_' . $file),
+                        'file_size' => $this->request->getPost('file_size_' . $file),
+                        'created_at' => $now,
+                        'uploaded_by' => $this->loggedInUser->id
+                    ];
                     $success = $this->General_files_model->save($data);
                 } else {
                     $success = false;
@@ -1133,39 +1171,42 @@ function bank_statement_info($user_id) {
             }
         }
 
-
         if ($success) {
-            echo json_encode(array("success" => true, 'message' => lang('record_saved')));
+            return $this->respondCreated(['success' => true, 'message' => lang('record_saved')]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('error_occurred')));
+            return $this->failServerError(lang('error_occurred'));
         }
     }
-
     /* list of files, prepared for datatable  */
 
-    function files_list_data($user_id = 0) {
-        $options = array("user_id" => $user_id);
+    
+    public function filesListData($userId = 0)
+    {
+        $this->updateOnlyAllowedMembers($userId);
 
-        $this->update_only_allowed_members($user_id);
-
-        $list_data = $this->General_files_model->get_details($options)->result();
-        $result = array();
-        foreach ($list_data as $data) {
-            $result[] = $this->_make_file_row($data);
+        $options = ['user_id' => $userId];
+        $listData = $this->General_files_model->getDetails($options)->getResult();
+        $result = [];
+        foreach ($listData as $data) {
+            $result[] = $this->makeFileRow($data);
         }
-        echo json_encode(array("data" => $result));
+        return $this->respond(['data' => $result]);
     }
+    
+    private function makeFileRow($data)
+    {
+        $fileIcon = getFileIcon(strtolower(pathinfo($data->file_name, PATHINFO_EXTENSION)));
 
-    private function _make_file_row($data) {
-        $file_icon = get_file_icon(strtolower(pathinfo($data->file_name, PATHINFO_EXTENSION)));
+        $imageURL = getAvatar($data->uploaded_by_user_image);
+        $uploadedBy = "<span class='avatar avatar-xs mr10'><img src='$imageURL' alt='...'></span> $data->uploaded_by_user_name";
+        $uploadedBy = getTeamMemberProfileLink($data->uploaded_by, $uploadedBy);
 
-        $image_url = get_avatar($data->uploaded_by_user_image);
-        $uploaded_by = "<span class='avatar avatar-xs mr10'><img src='$image_url' alt='...'></span> $data->uploaded_by_user_name";
-
-        $uploaded_by = get_team_member_profile_link($data->uploaded_by, $uploaded_by);
-
-        $description = "<div class='pull-left'>" .
-                js_anchor(remove_file_prefix($data->file_name), array('title' => "", "data-toggle" => "app-modal", "data-sidebar" => "0", "data-url" => get_uri("team_members/view_file/" . $data->id)));
+        $description = "<div class='pull-left'>" . jsAnchor(removeFilePrefix($data->file_name), [
+            'title' => '',
+            'data-toggle' => 'app-modal',
+            'data-sidebar' => '0',
+            'data-url' => route_to('team_members/view_file/' . $data->id)
+        ]);
 
         if ($data->description) {
             $description .= "<br /><span>" . $data->description . "</span></div>";
@@ -1173,161 +1214,171 @@ function bank_statement_info($user_id) {
             $description .= "</div>";
         }
 
-        $options = anchor(get_uri("team_members/download_file/" . $data->id), "<i class='fa fa fa-cloud-download'></i>", array("title" => lang("download")));
+        $options = anchor(route_to('team_members/download_file/' . $data->id), "<i class='fa fa fa-cloud-download'></i>", ['title' => lang('download')]);
+        $options .= jsAnchor("<i class='fa fa-times fa-fw'></i>", [
+            'title' => lang('delete_file'),
+            'class' => 'delete',
+            'data-id' => $data->id,
+            'data-action-url' => route_to('team_members/delete_file'),
+            'data-action' => 'delete-confirmation'
+        ]);
 
-        $options .= js_anchor("<i class='fa fa-times fa-fw'></i>", array('title' => lang('delete_file'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("team_members/delete_file"), "data-action" => "delete-confirmation"));
-
-
-        return array($data->id,
-            "<div class='fa fa-$file_icon font-22 mr10 pull-left'></div>" . $description,
-            convert_file_size($data->file_size),
-            $uploaded_by,
-            format_to_datetime($data->created_at),
+        return [
+            $data->id,
+            "<div class='fa fa-$fileIcon font-22 mr10 pull-left'></div>" . $description,
+            convertFileSize($data->file_size),
+            $uploadedBy,
+            formatToDateTime($data->created_at),
             $options
-        );
+        ];
     }
 
-    function view_file($file_id = 0) {
-        $file_info = $this->General_files_model->get_details(array("id" => $file_id))->row();
+    public function viewFile($fileId = 0)
+    {
+        $fileInfo = $this->General_files_model->getDetails(['id' => $fileId])->getRow();
 
-        if ($file_info) {
-
-            if (!$file_info->user_id) {
-                redirect("forbidden");
+        if ($fileInfo) {
+            if (!$fileInfo->user_id) {
+                return redirect()->to('forbidden');
             }
 
-            $this->update_only_allowed_members($file_info->user_id);
+            $this->updateOnlyAllowedMembers($fileInfo->user_id);
 
-            $view_data['can_comment_on_files'] = false;
-
-            $view_data["file_url"] = get_file_uri(get_general_file_path("team_members", $file_info->user_id) . $file_info->file_name);
-            $view_data["is_image_file"] = is_image_file($file_info->file_name);
-            $view_data["is_google_preview_available"] = is_google_preview_available($file_info->file_name);
-
-            $view_data["file_info"] = $file_info;
-            $view_data['file_id'] = $file_id;
-            $this->load->view("team_members/files/view", $view_data);
+            $viewData = [
+                'canCommentOnFiles' => false,
+                'fileUrl' => getFileUri(getGeneralFilePath('team_members', $fileInfo->user_id) . $fileInfo->file_name),
+                'isImageFile' => isImageFile($fileInfo->file_name),
+                'isGooglePreviewAvailable' => isGooglePreviewAvailable($fileInfo->file_name),
+                'fileInfo' => $fileInfo,
+                'fileId' => $fileId
+            ];
+            return view("team_members/files/view", $viewData);
         } else {
-            show_404();
+            return $this->failNotFound();
         }
     }
 
     /* download a file */
 
-    function download_file($id) {
-
-        $file_info = $this->General_files_model->get_one($id);
+    public function downloadFile($id)
+    {
+        $file_info = $this->General_files_model->getOne($id);
 
         if (!$file_info->user_id) {
-            redirect("forbidden");
+            return redirect()->to('forbidden');
         }
-        $this->update_only_allowed_members($file_info->user_id);
 
-        //serilize the path
-        $file_data = serialize(array(array("file_name" => $file_info->file_name)));
+        $this->updateOnlyAllowedMembers($file_info->user_id);
 
-        download_app_files(get_general_file_path("team_members", $file_info->user_id), $file_data);
+        $file_data = serialize([['file_name' => $file_info->file_name]]);
+        downloadAppFiles(getGeneralFilePath('team_members', $file_info->user_id), $file_data);
     }
+
 
     /* upload a post file */
-
-    function upload_file() {
-        upload_file_to_temp();
+    public function uploadFile()
+    {
+        uploadFileToTemp();
     }
-
     /* check valid file for user */
 
-    function validate_file() {
-        return validate_post_file($this->input->post("file_name"));
+    public function validateFile()
+    {
+        return validatePostFile($this->request->getPost('file_name'));
     }
-
     /* delete a file */
 
-    function delete_file() {
-
-        $id = $this->input->post('id');
-        $info = $this->General_files_model->get_one($id);
+    public function deleteFile()
+    {
+        $id = $this->request->getPost('id');
+        $info = $this->General_files_model->getOne($id);
 
         if (!$info->user_id) {
-            redirect("forbidden");
+            return redirect()->to('forbidden');
         }
 
-        $this->update_only_allowed_members($info->user_id);
+        $this->updateOnlyAllowedMembers($info->user_id);
 
         if ($this->General_files_model->delete($id)) {
-
-            delete_file_from_directory(get_general_file_path("team_members", $info->user_id) . $info->file_name);
-
-            echo json_encode(array("success" => true, 'message' => lang('record_deleted')));
+            deleteFileFromDirectory(getGeneralFilePath('team_members', $info->user_id) . $info->file_name);
+            return $this->respondDeleted(['success' => true, 'message' => lang('record_deleted')]);
         } else {
-            echo json_encode(array("success" => false, 'message' => lang('record_cannot_be_deleted')));
+            return $this->failServerError(lang('record_cannot_be_deleted'));
         }
     }
-        function save_theme_color() {
-         $account_data['theme_color'] = $this->input->post("theme_color").'.css';
-            $this->Users_model->save($account_data, $this->login_user->id);
-            echo json_encode(array("success" => true, 'message' => lang('profile_image_changed')));
-        } 
+    public function saveThemeColor()
+    {
+        $theme_color = $this->request->getPost("theme_color") . '.css';
+        $this->Users_model->save(['theme_color' => $theme_color], $this->loginUser->id);
+        return $this->respond(['success' => true, 'message' => lang('profile_image_changed')]);
+    }
 
 
        
        // get annual leave country bases
-    function get_country_annual_leave_info_suggestion() {
-        $item = $this->Countries_model->get_country_annual_leave_info_suggestion($this->input->post("item_name"));
-        if ($item) {
-            echo json_encode(array("success" => true, "item_info" => $item));
-        } else {
-            echo json_encode(array("success" => false));
-        }
-    }   
+       public function getCountryAnnualLeaveInfoSuggestion()
+       {
+           $item = $this->Countries_model->getCountryAnnualLeaveInfoSuggestion($this->request->getPost('item_name'));
+           if ($item) {
+               return $this->respond(['success' => true, 'item_info' => $item]);
+           } else {
+               return $this->failNotFound();
+           }
+       }
 
        // get country and branch
-    function get_country_branch() {
-        $options=array("cr_id"=>$this->input->post("item_name")) ;
-        $item = $this->Companys_model->get_details($options)->row();
-        if ($item) {
-            echo json_encode(array("success" => true, "item_info" => $item));
-        } else {
-            echo json_encode(array("success" => false));
-        }
-    }   
-
+       public function getCountryBranch()
+       {
+           $options = ['cr_id' => $this->request->getPost('item_name')];
+           $item = $this->Companies_model->getDetails($options)->getRow();
+           if ($item) {
+               return $this->respond(['success' => true, 'item_info' => $item]);
+           } else {
+               return $this->failNotFound();
+           }
+       }
 
        // get country and branch
-    function get_country() {
-        $options=array("branch_code"=>$this->input->post("item_name"),"company_name"=>$this->input->post("company_name")) ;
-        $item = $this->Branches_model->get_details($options)->row();
-        if ($item) {
-            echo json_encode(array("success" => true, "item_info" => $item));
-        } else {
-            echo json_encode(array("success" => false));
-        }
-    } 
+       public function getCountry()
+       {
+           $options = [
+               'branch_code' => $this->request->getPost('item_name'),
+               'company_name' => $this->request->getPost('company_name')
+           ];
+           $item = $this->Branches_model->getDetails($options)->getRow();
+           if ($item) {
+               return $this->respond(['success' => true, 'item_info' => $item]);
+           } else {
+               return $this->failNotFound();
+           }
+       }
 
-    function get_branch_currency() {
-        $options=array("numberCode"=>$this->input->post("item_name")) ;
-        $item = $this->Countries_model->get_details($options)->row();
-        if ($item) {
-            echo json_encode(array("success" => true, "item_info" => $item));
-        } else {
-            echo json_encode(array("success" => false));
-        }
-    } 
+       public function getBranchCurrency()
+       {
+           $options = ['numberCode' => $this->request->getPost('item_name')];
+           $item = $this->Countries_model->getDetails($options)->getRow();
+           if ($item) {
+               return $this->respond(['success' => true, 'item_info' => $item]);
+           } else {
+               return $this->failNotFound();
+           }
+       }
 
     // get branches for official holidays
-     function get_branches_suggestion() {
-        $key = $_REQUEST["q"];
-        $ss=$_REQUEST["ss"];
-        $itemss =  $this->Branches_model->get_company_item_suggestions_branch_name($key,$ss);
-        //$itemss =  $this->Countries_model->get_item_suggestions_country_name('india');
-        $suggestions = array();
-      foreach ($itemss as $items) {
-           $suggestions[] = array("id" => $items->branch_code, "text" => $items->title);
-       }
-        echo json_encode($suggestions);
-    }  
-    function keyboard_shortcut_modal_form() {
-        $this->load->view('team_members/keyboard_shortcut_modal_form');
+    public function getBranchesSuggestion()
+    {
+        $key = $this->request->getVar('q');
+        $ss = $this->request->getVar('ss');
+        $itemss = $this->Branches_model->getCompanyItemSuggestionsBranchName($key, $ss);
+        $suggestions = [];
+        foreach ($itemss as $items) {
+            $suggestions[] = ['id' => $items->branch_code, 'text' => $items->title];
+        }
+        return $this->respond($suggestions);
+    }
+    public function keyboardShortcutModalForm()
+    {
+        return view('team_members/keyboard_shortcut_modal_form');
     }
 }
 

@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Controllers;
-
 use App\Models\ClientGroupsModel;
 use CodeIgniter\API\ResponseTrait;
 
@@ -10,7 +8,6 @@ class ClientGroups extends BaseController
     use ResponseTrait;
 
     protected $clientGroupsModel;
-
     public function __construct()
     {
         $this->clientGroupsModel = new ClientGroupsModel();

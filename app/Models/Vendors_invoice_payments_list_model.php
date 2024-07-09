@@ -51,18 +51,4 @@ class VendorsInvoicePaymentsListModel extends Model
                 
         return $this->db->query($sql)->getResult();
     }
-
-    /* public function getAllChecklistOfProject($vendor_id)
-    {
-        $checklistItemsTable = $this->db->prefixTable('vendors_invoice_payments_list');
-        $tasksTable = $this->db->prefixTable('vendors_invoice_lit');
-
-        $sql = "SELECT $checklistItemsTable.task_id, $checklistItemsTable.title
-                FROM $checklistItemsTable
-                LEFT JOIN $tasksTable ON $tasksTable.id = $checklistItemsTable.task_id 
-                WHERE $checklistItemsTable.deleted = 0 
-                  AND $tasksTable.project_id = " . $this->db->escape($project_id);
-
-        return $this->db->query($sql)->getResult();
-    } */
 }

@@ -1,202 +1,250 @@
-<?php 
+<?php
+
 namespace App\Controllers;
 
-class Expenses extends BaseController {
-    protected$expensecategoriesmodel;
-    protected$customfieldsmodel;
-    protected$clientsmodel;
-    protected$vendorsmodel;
-    protected$usersmodel;
-    protected$projectsmodel;
-    protected$expensesmodel;
-    protected$paymentstatusmodel;
-    protected$vouchermodel;
-    protected$voucherexpensesmodel;
-    protected$taxesmodel;
-    protected$vouchercommentsmodel;
-    protected$invoicepaymentsmodel;
-    protected$purchaseorderpaymentsmodel;
-    protected$vendorsinvoicepaymentslistmodel;
-    protected$workorderpaymentsmodel;
+use App\Models\CustomFieldsModel;
+use App\Models\ClientsModel;
+use App\Models\VendorsModel;
+use App\Models\UsersModel;
+use App\Models\ProjectsModel;
+use App\Models\ExpensesModel;
+use App\Models\PaymentStatusModel;
+use App\Models\VoucherModel;
+use App\Models\VoucherExpensesModel;
+use App\Models\TaxesModel;
+use App\Models\VoucherCommentsModel;
+use App\Models\InvoicePaymentsModel;
+use App\Models\PurchaseOrderPaymentsModel;
+use App\Models\VendorsInvoicePaymentsListModel;
+use App\Models\WorkOrderPaymentsModel;
+use CodeIgniter\API\ResponseTrait;
 
-    function __construct() {
-        parent::__construct();
+class Expenses extends BaseController
+{
+    use ResponseTrait;
 
-        $this->init_permission_checker("expense");
+    protected $expenseCategoriesModel;
+    protected $customFieldsModel;
+    protected $clientsModel;
+    protected $vendorsModel;
+    protected $usersModel;
+    protected $projectsModel;
+    protected $expensesModel;
+    protected $paymentStatusModel;
+    protected $voucherModel;
+    protected $voucherExpensesModel;
+    protected $taxesModel;
+    protected $voucherCommentsModel;
+    protected $invoicePaymentsModel;
+    protected $purchaseOrderPaymentsModel;
+    protected $vendorsInvoicePaymentsListModel;
+    protected $workOrderPaymentsModel;
 
+    public function __construct()
+    {
+        $this->expenseCategoriesModel = new ExpenseCategoriesModel();
+        $this->customFieldsModel = new CustomFieldsModel();
+        $this->clientsModel = new ClientsModel();
+        $this->vendorsModel = new VendorsModel();
+        $this->usersModel = new UsersModel();
+        $this->projectsModel = new ProjectsModel();
+        $this->expensesModel = new ExpensesModel();
+        $this->paymentStatusModel = new PaymentStatusModel();
+        $this->voucherModel = new VoucherModel();
+        $this->voucherExpensesModel = new VoucherExpensesModel();
+        $this->taxesModel = new TaxesModel();
+        $this->voucherCommentsModel = new VoucherCommentsModel();
+        $this->invoicePaymentsModel = new InvoicePaymentsModel();
+        $this->purchaseOrderPaymentsModel = new PurchaseOrderPaymentsModel();
+        $this->vendorsInvoicePaymentsListModel = new VendorsInvoicePaymentsListModel();
+        $this->workOrderPaymentsModel = new WorkOrderPaymentsModel();
+
+        $this->init_permission_checker('expense');
         $this->access_only_allowed_members();
     }
 
-    //load the expenses list view
-    function index() {
-        $this->check_module_availability("module_expense");
+    // Load the expenses list view
+    public function index()
+    {
+        $this->check_module_availability('module_expense');
 
-        $view_data["custom_field_headers"] = $this->Custom_fields_model->get_custom_field_headers_for_table("expenses", $this->login_user->is_admin, $this->login_user->user_type);
+        $viewData['custom_field_headers'] = $this->customFieldsModel->getCustomFieldHeadersForTable('expenses', $this->login_user->is_admin, $this->login_user->user_type);
 
-        $view_data['categories_dropdown'] = $this->_get_categories_dropdown();
-        $view_data['members_dropdown'] = $this->_get_team_members_dropdown();
-        $view_data['rm_members_dropdown'] = $this->_get_rm_members_dropdown();
-        $view_data['clients_dropdown'] = json_encode($this->_get_clients_dropdown());
-        $view_data['vendors_dropdown'] = json_encode($this->_get_vendors_dropdown());
-        $view_data['projects_dropdown'] = $this->_get_projects_dropdown();
+        $viewData['categories_dropdown'] = $this->_getCategoriesDropdown();
+        $viewData['members_dropdown'] = $this->_getTeamMembersDropdown();
+        $viewData['rm_members_dropdown'] = $this->_getRmMembersDropdown();
+        $viewData['clients_dropdown'] = json_encode($this->_getClientsDropdown());
+        $viewData['vendors_dropdown'] = json_encode($this->_getVendorsDropdown());
+        $viewData['projects_dropdown'] = $this->_getProjectsDropdown();
 
-        $this->template->rander("expenses/index", $view_data);
+        return view('expenses/index', $viewData);
     }
 
-    //get categories dropdown
-    private function _get_categories_dropdown() {
-        $categories = $this->Expense_categories_model->get_all_where(array("deleted" => 0 , "status" => "active"), 0, 0, "title")->result();
+    // Get categories dropdown
+    private function _getCategoriesDropdown()
+    {
+        $categories = $this->expenseCategoriesModel->where(['deleted' => 0, 'status' => 'active'])->orderBy('title')->findAll();
 
-        $categories_dropdown = array(array("id" => "", "text" => "- " . lang("category") . " -"));
+        $categoriesDropdown = [['id' => '', 'text' => '- ' . lang('category') . ' -']];
         foreach ($categories as $category) {
-            $categories_dropdown[] = array("id" => $category->id, "text" => $category->title);
+            $categoriesDropdown[] = ['id' => $category['id'], 'text' => $category['title']];
         }
 
-        return json_encode($categories_dropdown);
+        return json_encode($categoriesDropdown);
     }
 
+    // Get clients dropdown
+    private function _getClientsDropdown()
+    {
+        $clientsDropdown = [['id' => '', 'text' => '- ' . lang('client') . ' -']];
+        $clients = $this->clientsModel->findAll();
 
-
-    //get clients dropdown
-    private function _get_clients_dropdown() {
-        $clients_dropdown = array(array("id" => "", "text" => "- " . lang("client") . " -"));
-        $clients = $this->Clients_model->get_dropdown_list(array("company_name"));
-        foreach ($clients as $key => $value) {
-            $clients_dropdown[] = array("id" => $key, "text" => $value);
+        foreach ($clients as $client) {
+            $clientsDropdown[] = ['id' => $client['id'], 'text' => $client['company_name']];
         }
-        return $clients_dropdown;
+        return $clientsDropdown;
     }
 
-     //get clients dropdown
-    private function _get_vendors_dropdown() {
-        $vendors_dropdown = array(array("id" => "", "text" => "- " . lang("vendor") . " -"));
-        $vendors = $this->Vendors_model->get_dropdown_list(array("company_name"));
-        foreach ($vendors as $key => $value) {
-            $vendors_dropdown[] = array("id" => $key, "text" => $value);
+    // Get vendors dropdown
+    private function _getVendorsDropdown()
+    {
+        $vendorsDropdown = [['id' => '', 'text' => '- ' . lang('vendor') . ' -']];
+        $vendors = $this->vendorsModel->findAll();
+
+        foreach ($vendors as $vendor) {
+            $vendorsDropdown[] = ['id' => $vendor['id'], 'text' => $vendor['company_name']];
         }
-        return $vendors_dropdown;
+        return $vendorsDropdown;
     }
 
+    // Get team members dropdown
+    private function _getTeamMembersDropdown()
+    {
+        $teamMembers = $this->usersModel->where(['deleted' => 0, 'user_type' => 'staff'])->orderBy('first_name')->findAll();
 
-    //get team members dropdown
-    private function _get_team_members_dropdown() {
-        $team_members = $this->Users_model->get_all_where(array("deleted" => 0, "user_type" => "staff"), 0, 0, "first_name")->result();
-
-        $members_dropdown = array(array("id" => "", "text" => "- " . lang("member") . " -"));
-        foreach ($team_members as $team_member) {
-            $members_dropdown[] = array("id" => $team_member->id, "text" => $team_member->first_name . " " . $team_member->last_name);
-        }
-
-        return json_encode($members_dropdown);
-    }
-private function _get_rm_members_dropdown() {
-        $rm_members = $this->Users_model->get_all_where(array("deleted" => 0, "user_type" => "resource"), 0, 0, "first_name")->result();
- 
-        $rm_members_dropdown = array(array("id" => "", "text" => "- " . lang("outsource_member") . " -"));
-        foreach ($rm_members as $rm_member) {
-            $rm_members_dropdown[] = array("id" => $rm_member->id, "text" => $rm_member->first_name . " " . $rm_member->last_name);
+        $membersDropdown = [['id' => '', 'text' => '- ' . lang('member') . ' -']];
+        foreach ($teamMembers as $teamMember) {
+            $membersDropdown[] = ['id' => $teamMember['id'], 'text' => $teamMember['first_name'] . ' ' . $teamMember['last_name']];
         }
 
-        return json_encode($rm_members_dropdown);
+        return json_encode($membersDropdown);
     }
-    //get projects dropdown
-    private function _get_projects_dropdown() {
-        $projects = $this->Projects_model->get_all_where(array("deleted" => 0), 0, 0, "title")->result();
 
-        $projects_dropdown = array(array("id" => "", "text" => "- " . lang("project") . " -"));
+    private function _getRmMembersDropdown()
+    {
+        $rmMembers = $this->usersModel->where(['deleted' => 0, 'user_type' => 'resource'])->orderBy('first_name')->findAll();
+
+        $rmMembersDropdown = [['id' => '', 'text' => '- ' . lang('outsource_member') . ' -']];
+        foreach ($rmMembers as $rmMember) {
+            $rmMembersDropdown[] = ['id' => $rmMember['id'], 'text' => $rmMember['first_name'] . ' ' . $rmMember['last_name']];
+        }
+
+        return json_encode($rmMembersDropdown);
+    }
+
+    // Get projects dropdown
+    private function _getProjectsDropdown()
+    {
+        $projects = $this->projectsModel->where(['deleted' => 0])->orderBy('title')->findAll();
+
+        $projectsDropdown = [['id' => '', 'text' => '- ' . lang('project') . ' -']];
         foreach ($projects as $project) {
-            $projects_dropdown[] = array("id" => $project->id, "text" => $project->title);
+            $projectsDropdown[] = ['id' => $project['id'], 'text' => $project['title']];
         }
 
-        return json_encode($projects_dropdown);
+        return json_encode($projectsDropdown);
     }
 
-    //load the expenses list yearly view
-    function yearly() {
-        $this->load->view("expenses/yearly_expenses");
+    // Load the expenses list yearly view
+    public function yearly()
+    {
+        return view('expenses/yearly_expenses');
     }
 
-    //load custom expenses list
-    function custom() {
-        $this->load->view("expenses/custom_expenses");
+    // Load custom expenses list
+    public function custom()
+    {
+        return view('expenses/custom_expenses');
     }
 
-    //load the add/edit expense form
-    function modal_form() {
-        validate_submitted_data(array(
-            "id" => "numeric"
-        ));
+    // Load the add/edit expense form
+    public function modalForm()
+    {
+        $this->validate([
+            'id' => 'numeric'
+        ]);
 
-        $model_info = $this->Expenses_model->get_one($this->input->post('id'));
-         $model_infos = $this->Users_model->get_one($this->input->post('user_id'));
-        $view_data['categories_dropdown'] = $this->Expense_categories_model->get_dropdown_list(array("title"),"id",array("status" =>"active"));
-       $view_data['voucher_dropdown'] = array("0" => "-") + $this->Voucher_model->get_dropdown_list(array("id"), "id", array("voucher_type_id" => '1'));
-       $view_data['payment_status_dropdown'] = $this->Payment_status_model->get_dropdown_list(array("title"),"id",array("status" =>"active"));
-        $team_members = $this->Users_model->get_all_where(array("deleted" => 0, "user_type" => "staff"))->result();
-        $members_dropdown = array();
+        $modelInfo = $this->expensesModel->find($this->request->getPost('id'));
+        $modelInfos = $this->usersModel->find($this->request->getPost('user_id'));
 
-        foreach ($team_members as $team_member) {
-            $members_dropdown[$team_member->id] = $team_member->first_name . " " . $team_member->last_name;
+        $viewData['categories_dropdown'] = $this->expenseCategoriesModel->getDropdownList(['title'], 'id', ['status' => 'active']);
+        $viewData['voucher_dropdown'] = ['0' => '-'] + $this->voucherModel->getDropdownList(['id'], 'id', ['voucher_type_id' => '1']);
+        $viewData['payment_status_dropdown'] = $this->paymentStatusModel->getDropdownList(['title'], 'id', ['status' => 'active']);
+        
+        $teamMembers = $this->usersModel->where(['deleted' => 0, 'user_type' => 'staff'])->findAll();
+        $membersDropdown = [];
+
+        foreach ($teamMembers as $teamMember) {
+            $membersDropdown[$teamMember['id']] = $teamMember['first_name'] . ' ' . $teamMember['last_name'];
         }
 
-        $view_data['members_dropdown'] = array("0" => "-") + $members_dropdown;
-         $others = $this->Voucher_expenses_model->get_all_where(array("deleted" => 0, "member_type" => "others"))->result();
-        $others_dropdown = array();
+        $viewData['members_dropdown'] = ['0' => '-'] + $membersDropdown;
+
+        $others = $this->voucherExpensesModel->where(['deleted' => 0, 'member_type' => 'others'])->findAll();
+        $othersDropdown = [];
 
         foreach ($others as $other) {
-            $others_dropdown[$other->phone] = $other->f_name . " " . $other->l_name;
+            $othersDropdown[$other['phone']] = $other['f_name'] . ' ' . $other['l_name'];
         }
 
-        $view_data['others_dropdown'] = array("0" => "-") + $others_dropdown;
-        $rm_members = $this->Users_model->get_all_where(array("deleted" => 0, "user_type" => "resource"))->result();
-        $rm_members_dropdown = array();
-
-        foreach ($rm_members as $rm_member) {
-            $rm_members_dropdown[$rm_member->id] = $rm_member->first_name . " " . $rm_member->last_name;
-        }
-
-      //add the clients and vendors 
-$view_data['vendors_dropdown'] = array("" => "-")+ $this->Vendors_model->get_dropdown_list(array("company_name"),'id');
-   $view_data['clients_dropdown'] =  array("" => "-")+$this->Clients_model->get_dropdown_list(array("company_name"),'id');
-
-$view_data['client_members_dropdown'] = $this->_get_users_dropdown_select2_data();
-$view_data['vendor_members_dropdown'] = $this->_get_users_dropdown_select2_data();  
-
-        $view_data['rm_members_dropdown'] = array("0" => "-") + $rm_members_dropdown ;
-        $view_data['projects_dropdown'] = array("0" => "-") + $this->Projects_model->get_dropdown_list(array("title"));
-        $view_data['taxes_dropdown'] = array("" => "-") + $this->Taxes_model->get_dropdown_list(array("title"));
-
-        $model_info->project_id = $model_info->project_id ? $model_info->project_id : $this->input->post('project_id');
-        $model_info->user_id = $model_info->user_id ? $model_info->user_id : $this->input->post('user_id');
-$view_data['model_infos'] = $model_infos;
-        $view_data['model_info'] = $model_info;
-
-        //voucher id dropdown 
-        $po_info = $this->Voucher_model->get_one($model_info->voucher_no); 
-        $voucher_id_dropdown = array(array("id" => "", "text" => "-"));
-        $voucher_id_dropdown[] = array("id" => $model_info->voucher_no, "text" => $po_info->voucher_no? $po_info->voucher_no:get_voucher_id($model_info->voucher_no));
-        $view_data['voucher_id_dropdown'] = $voucher_id_dropdown;
-
-        $view_data["custom_fields"] = $this->Custom_fields_model->get_combined_details("expenses", $view_data['model_info']->id, $this->login_user->is_admin, $this->login_user->user_type)->result();
-        $this->load->view('expenses/modal_form', $view_data);
-    }
-
-
-    /* add or edit an estimate item */
-private function _get_users_dropdown_select2_data($show_header = false) {
-        $luts = $this->Users_model->get_all()->result();
-        $lut_dropdown = array(array("id" => "", "text" => "-"));
-
+        $viewData['others_dropdown'] = ['0' => '-'] + $othersDropdown;
         
+        $rmMembers = $this->usersModel->where(['deleted' => 0, 'user_type' => 'resource'])->findAll();
+        $rmMembersDropdown = [];
 
-        foreach ($luts as $code) {
-            $lut_dropdown[] = array("id" => $code->id, "text" => $code->first_name." ".$code->last_name);
+        foreach ($rmMembers as $rmMember) {
+            $rmMembersDropdown[$rmMember['id']] = $rmMember['first_name'] . ' ' . $rmMember['last_name'];
         }
-        return $lut_dropdown;
+
+        $viewData['vendors_dropdown'] = ['' => '-'] + $this->vendorsModel->getDropdownList(['company_name'], 'id');
+        $viewData['clients_dropdown'] = ['' => '-'] + $this->clientsModel->getDropdownList(['company_name'], 'id');
+
+        $viewData['client_members_dropdown'] = $this->_getUsersDropdownSelect2Data();
+        $viewData['vendor_members_dropdown'] = $this->_getUsersDropdownSelect2Data();
+
+        $viewData['rm_members_dropdown'] = ['0' => '-'] + $rmMembersDropdown;
+        $viewData['projects_dropdown'] = ['0' => '-'] + $this->projectsModel->getDropdownList(['title']);
+        $viewData['taxes_dropdown'] = ['' => '-'] + $this->taxesModel->getDropdownList(['title']);
+
+        $modelInfo['project_id'] = $modelInfo['project_id'] ? $modelInfo['project_id'] : $this->request->getPost('project_id');
+        $modelInfo['user_id'] = $modelInfo['user_id'] ? $modelInfo['user_id'] : $this->request->getPost('user_id');
+        
+        $viewData['model_infos'] = $modelInfos;
+        $viewData['model_info'] = $modelInfo;
+
+        $poInfo = $this->voucherModel->find($modelInfo['voucher_no']);
+        $voucherIdDropdown = [['id' => '', 'text' => '-']];
+        $voucherIdDropdown[] = ['id' => $modelInfo['voucher_no'], 'text' => $poInfo ? $poInfo['voucher_no'] : get_voucher_id($modelInfo['voucher_no'])];
+        
+        $viewData['voucher_id_dropdown'] = $voucherIdDropdown;
+
+        $viewData['custom_fields'] = $this->customFieldsModel->getCombinedDetails('expenses', $viewData['model_info']['id'], $this->login_user->is_admin, $this->login_user->user_type)->findAll();
+        
+        return view('expenses/modal_form', $viewData);
     }
 
+    private function _getUsersDropdownSelect2Data($showHeader = false)
+    {
+        $users = $this->usersModel->findAll();
+        $usersDropdown = [['id' => '', 'text' => '-']];
 
-    //save an expense
+        foreach ($users as $user) {
+            $usersDropdown[] = ['id' => $user['id'], 'text' => $user['first_name'] . ' ' . $user['last_name']];
+        }
+
+        return $usersDropdown;
+    }
+   //save an expense
   /*  function save() {
         validate_submitted_data(array(
             "id" => "numeric",
@@ -684,70 +732,7 @@ $description='Changed the status from "'.lang($estmate_info->status).'" to "'.la
         $data = $this->Expenses_model->get_details($options)->row();
         return $this->_make_row($data, $custom_fields);
     }
-
-  /*  //prepare a row of expnese list
-    private function _make_row($data, $custom_fields) {
-
-        $description = $data->description;
-        if ($data->project_title) {
-            if ($description) {
-                $description .= "<br /> ";
-            }
-            $description .= lang("project") . ": " . $data->project_title;
-        }
-
-        if ($data->linked_user_name) {
-            if ($description) {
-                $description .= "<br /> ";
-            }
-            $description .= lang("team_member") . ": " . $data->linked_user_name;
-        }
-
-        $files_link = "";
-        if ($data->files) {
-            $files = unserialize($data->files);
-            if (count($files)) {
-                foreach ($files as $file) {
-                    $file_name = get_array_value($file, "file_name");
-                    $link = " fa fa-" . get_file_icon(strtolower(pathinfo($file_name, PATHINFO_EXTENSION)));
-                    $files_link .= js_anchor(" ", array('title' => "", "data-toggle" => "app-modal", "data-sidebar" => "0", "class" => "pull-left font-22 mr10 $link", "title" => remove_file_prefix($file_name), "data-url" => get_uri("expenses/file_preview/" . $file_name)));
-                }
-            }
-        }
-
-        $tax = 0;
-        $tax2 = 0;
-        if ($data->tax_percentage) {
-            $tax = $data->amount * ($data->tax_percentage / 100);
-        }
-        if ($data->tax_percentage2) {
-            $tax2 = $data->amount * ($data->tax_percentage2 / 100);
-        }
-
-        $row_data = array(
-            $data->expense_date,
-            format_to_date($data->expense_date, false),
-            $data->category_title,
-            $data->title,
-            $description,
-            $files_link,
-            to_currency($data->amount),
-            to_currency($tax),
-            to_currency($tax2),
-            to_currency($data->amount + $tax + $tax2)
-        );
-
-        foreach ($custom_fields as $field) {
-            $cf_id = "cfv_" . $field->id;
-            $row_data[] = $this->load->view("custom_fields/output_" . $field->field_type, array("value" => $data->$cf_id), true);
-        }
-
-        $row_data[] = modal_anchor(get_uri("expenses/modal_form"), "<i class='fa fa-pencil'></i>", array("class" => "edit", "title" => lang('edit_expense'), "data-post-id" => $data->id))
-                . js_anchor("<i class='fa fa-times fa-fw'></i>", array('title' => lang('delete_expense'), "class" => "delete", "data-id" => $data->id, "data-action-url" => get_uri("expenses/delete"), "data-action" => "delete-confirmation"));
-
-        return $row_data;
-    } */
-    //prepare a row of expnese list
+  //prepare a row of expnese list
     private function _make_row($data, $custom_fields) {
 
         $description = $data->description;
