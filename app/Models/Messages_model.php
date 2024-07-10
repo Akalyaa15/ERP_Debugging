@@ -8,8 +8,7 @@ class Messages_model extends Crud_model {
         $this->table = 'messages';
         parent::__construct($this->table);
     }
-
-    /*
+     /*
      * prepare details info of a message
      */
 

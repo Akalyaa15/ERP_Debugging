@@ -8,7 +8,7 @@ class LeaveApplicationsModel extends Model
 {
     protected $table = 'leave_applications';
     protected $primaryKey = 'id';
-    protected $returnType = 'object'; 
+    protected $returnType = 'object';
 
     public function __construct()
     {

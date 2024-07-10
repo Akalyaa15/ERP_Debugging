@@ -14,7 +14,6 @@ class AttendanceModel extends Model
     protected $allowedFields = [
         'user_id', 'in_time', 'out_time', 'status', 'note', 'clockin_location', 'clockout_location', 'deleted'
     ];
-
     public function __construct()
     {
         parent::__construct();

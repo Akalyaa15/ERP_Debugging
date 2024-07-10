@@ -1,10 +1,7 @@
 <?php
-
 namespace App\Controllers;
-
 use App\Controllers\BaseController;
 use DateTimeZone;
-
 class Settings extends BaseController
 {
     protected $settingsModel;

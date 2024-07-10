@@ -136,7 +136,6 @@ class Bank_name extends BaseController
             }
         }
     }
-
     public function list_data()
     {
         $list_data = $this->bankNameModel->findAll();
@@ -196,6 +195,5 @@ class Bank_name extends BaseController
             $last_activity_date,
             modal_anchor(get_uri("bank_name/modal_form"), "<i class='fa fa-pencil'></i>", array("class" => "edit", "title" => lang('edit_bank'), "data-post-id" => $data['id']))
                 . js_anchor("<i class='fa fa-times fa-fw'></i>", array('title' => lang('delete_tax'), "class" => "delete", "data-id" => $data['id'], "data-action-url" => get_uri("bank_name/delete"), "data-action" => "delete-confirmation"))
-        ];
-    }
+        ];}
 }
